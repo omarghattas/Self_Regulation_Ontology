@@ -125,9 +125,8 @@ def hierarchical_cluster(df, compute_dist=True,  pdist_kws=None,
                          method='average', cluster_kws=None):
     """
     plot hierarchical clustering and heatmap
-    :df: a correlation matrix
-    parse_heatmap: int (optional). If defined, devides the columns of the 
-                    heatmap based on cutting the dendrogram
+    df: data to be converted to distances (samples x features)
+
     """
     
     # if compute_dist = False, assume df is a distance matrix. Otherwise
