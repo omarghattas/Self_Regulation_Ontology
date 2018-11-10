@@ -8,24 +8,23 @@ import pickle
 import seaborn as sns
 from sklearn.preprocessing import MinMaxScaler
 from dimensional_structure.plot_utils import get_short_names, plot_loadings
-
 from selfregulation.utils.plot_utils import beautify_legend, CurvedText, format_num, save_figure
 
 colors = sns.color_palette('Blues_d',3) + sns.color_palette('Reds_d',2)[:1]
-
-
 shortened_factors = get_short_names()
 
 def visualize_importance(importance, ax, xticklabels=True, yticklabels=True, 
                          axes_linewidth=None, label_size=10,
                          label_scale=0, title=None, 
-                         ymax=None, color=colors[1]):
+                         ymax=None, color=colors[1],
+                         show_sign=True):
     importance_vars = importance[0]
     importance_vars = [shortened_factors.get(v,v) for v in importance_vars]
     if importance[1] is not None:
         importance_vals = [abs(i) for i in importance[1]]
         plot_loadings(ax, importance_vals, kind='line', offset=.5, 
-                      colors=[color], plot_kws={'alpha': 1, 'linewidth': label_size/4})
+                      colors=[color], plot_kws={'alpha': 1, 
+                                                 'linewidth': label_size/4})
     else:
         ax.set_yticks([])
     ax.grid(linewidth=label_size/8)
@@ -43,6 +42,9 @@ def visualize_importance(importance, ax, xticklabels=True, yticklabels=True,
         size = ax.get_position().expanded(scale, scale)
         ax2=ax.get_figure().add_axes(size,zorder=2)
         for i, var in enumerate(importance_vars):
+            fontcolor='k'
+            if importance[1][i] < 0:
+                fontcolor = 'r'
             arc_start = (i+.1)*2*np.pi/len(importance_vars)
             arc_end = (i+.9)*2*np.pi/len(importance_vars)
             curve = [
@@ -56,7 +58,8 @@ def visualize_importance(importance, ax, xticklabels=True, yticklabels=True,
                 text=var, #'this this is a very, very long text',
                 va = 'bottom',
                 axes = ax2,
-                fontsize=label_size
+                fontsize=label_size,
+                color=fontcolor
             )
             ax2.set_xlim([-1,1]); ax2.set_ylim([-1,1])
             ax2.axis('off')
@@ -76,17 +79,38 @@ def visualize_importance(importance, ax, xticklabels=True, yticklabels=True,
             replace_dict = {i:'' for i in labels[::2]}
             labels = [replace_dict.get(i, i) for i in labels]
             ax.set_yticklabels(labels)
+    # optional to shade to show sign of beta value
+    if show_sign:
+        data_coords = ax.lines[0].get_data()
+        ylim = ax.get_ylim()
+        gap = data_coords[0][1]-data_coords[0][0]
+        centers = []
+        for i, val in enumerate([j for j in importance[1]]):
+            if val<0:
+                centers.append(data_coords[0][i])
+        for center in centers:
+            ax.axvspan(xmin=center-gap/2, xmax=center+gap/2,
+                       ymin=ylim[0], ymax=ylim[1]+1,
+                       facecolor='r', alpha=.2)
 
-def plot_prediction(results, target_order=None, EFA=True, classifier='ridge',
-                    rotate='oblimin', change=False, normalize=False, 
-                    metric='R2', size=4.6,  
-                    dpi=300, ext='png', plot_dir=None):
-    basefont = max(size, 5)
+def plot_results_prediction(results, target_order=None, EFA=True, 
+                            classifier='ridge',rotate='oblimin', 
+                            change=False, plot_dir=None, **kwargs):
+    """ Plots results object prediction results
+    
+    Args:
+        results: rdimensional structure results object
+        EFA: bool. Whether to plot polar plots for factor importance
+        target_order: (optional) a list of targets to order the plot
+        classifier, rotate, change: determine the type of prediction to plot
+        plot_dir: plot directory to save plot
+        kwargs: (optional) to pass to plot_prediction
+    """
+    
     predictions = results.load_prediction_object(EFA=EFA, 
-                                                 change=change,
-                                                 classifier=classifier,
-                                                 rotate=rotate)
-    sns.set_style('white')
+                                             change=change,
+                                             classifier=classifier,
+                                             rotate=rotate)
     if predictions is None:
         print('No prediction object found!')
         return
@@ -102,6 +126,46 @@ def plot_prediction(results, target_order=None, EFA=True, classifier='ridge',
     
     if target_order is None:
         target_order = predictions.keys()
+    if plot_dir is not None:
+        changestr = '_change' if change else ''
+        if EFA:
+            filename = 'EFA%s_%s_prediction_bar.%s' % (changestr, classifier)
+        else:
+            filename = 'IDM%s_%s_prediction_bar.%s' % (changestr, classifier)
+        filename = path.join(plot_dir, filename)
+    else:
+        filename = None
+    if EFA:
+        plot_prediction(predictions, shuffled_predictions, 
+                        results.EFA, target_order, filename=filename, **kwargs)
+    else:
+        plot_prediction(predictions, shuffled_predictions, 
+                        None, target_order, filename=filename, **kwargs)
+    
+def plot_prediction(predictions, shuffled_predictions, EFA=None,
+                    target_order=None, show_sign=False,
+                    metric='R2', size=4.6,  
+                    dpi=300, ext='png', filename=None):
+    """ Plots predictions resulting from "run_prediction" function
+    
+    Args:
+        predictions: prediction result from run_prediction
+        shuffled_predictions: shuffled prediction result from run_prediction
+        EFA: (optional) EFA option or bool. If it is not None, plot polar plots
+            for predictions. If an EFA object is provided, sort the polar plot
+            by predictor similarity
+        target_order: (optional) a list of targets to order the plot
+        metric: which metric from the output of run_prediction to use
+        size: figure size
+        dpi: dpi to use for saving
+        ext: extension to use for saving (e.g., pdf)
+        filename: if provided, save to this location
+    """
+    basefont = max(size, 5)
+    sns.set_style('white')
+
+    if target_order is None:
+        target_order = predictions.keys()
     # get prediction success
     r2s = [[k,predictions[k]['scores_cv'][0][metric]] for k in target_order]
     insample_r2s = [[k, predictions[k]['scores_insample'][0][metric]] for k in target_order]
@@ -113,14 +177,10 @@ def plot_prediction(results, target_order=None, EFA=True, classifier='ridge',
         R2s = [i[metric] for i in shuffled_predictions[k]['scores_cv']]
         R2_95 = np.percentile(R2s, 95)
         shuffled_r2s.append((k,R2_95))
-        if normalize:
-            r2s[i] = (r2s[i][0], r2s[i][1]-R2_95)
         # and insample
         R2s = [i[metric] for i in shuffled_predictions[k]['scores_insample']]
         R2_95 = np.percentile(R2s, 95)
         insample_shuffled_r2s.append((k,R2_95))
-        if normalize:
-            insample_r2s[i] = (insample_r2s[i][0], insample_r2s[i][1]-R2_95)
         
     # convert nans to 0
     r2s = [(i, k) if k==k else (i,0) for i, k in r2s]
@@ -141,28 +201,22 @@ def plot_prediction(results, target_order=None, EFA=True, classifier='ridge',
     ax1.bar(ind+width, [i[1] for i in insample_r2s], width, 
             label='Insample prediction', color=colors[2])
     # plot shuffled values above
-    if not normalize:
-        ax1.bar(ind, [i[1] for i in shuffled_r2s], width, 
-                 color='none', edgecolor=shuffled_grey, 
-                linewidth=size/10, linestyle='--', label='95% shuffled prediction')
-        ax1.bar(ind+width, [i[1] for i in insample_shuffled_r2s], width, 
-                color='none', edgecolor=shuffled_grey, 
-                linewidth=size/10, linestyle='--')
-    
+    ax1.bar(ind, [i[1] for i in shuffled_r2s], width, 
+             color='none', edgecolor=shuffled_grey, 
+            linewidth=size/10, linestyle='--', label='95% shuffled prediction')
+    ax1.bar(ind+width, [i[1] for i in insample_shuffled_r2s], width, 
+            color='none', edgecolor=shuffled_grey, 
+            linewidth=size/10, linestyle='--')
+
     ax1.set_xticks(np.arange(0,len(r2s))+width/2)
     ax1.set_xticklabels([i[0] for i in r2s], rotation=15, fontsize=basefont*1.4)
     ax1.tick_params(axis='y', labelsize=size*1.2)
     ax1.tick_params(length=size/4, width=size/10, pad=size/2)
     xlow, xhigh = ax1.get_xlim()
-    if normalize:
-        ax1.set_ylabel('Permutation Normalized R2', fontsize=basefont, labelpad=10)
-        ax1.hlines(0, xlow, xhigh, color='k', lw=size/5)
-        ax1.set_xlim(xlow,xhigh)
+    if metric == 'R2':
+        ax1.set_ylabel(r'$R^2$', fontsize=basefont*1.5, labelpad=size*1.5)
     else:
-        if metric == 'R2':
-            ax1.set_ylabel(r'$R^2$', fontsize=basefont*1.5, labelpad=size*1.5)
-        else:
-            ax1.set_ylabel(metric, fontsize=basefont*1.5, labelpad=size*1.5)
+        ax1.set_ylabel(metric, fontsize=basefont*1.5, labelpad=size*1.5)
     # add a legend
     leg = ax1.legend(fontsize=basefont*1.4, loc='upper left', 
                      frameon=True, handlelength=0, handletextpad=0)
@@ -179,18 +233,18 @@ def plot_prediction(results, target_order=None, EFA=True, classifier='ridge',
         ax1.yaxis.set_major_locator(ticker.MultipleLocator(.025))
     else:
         ax1.yaxis.set_major_locator(ticker.MultipleLocator(.05))
-        if normalize:
-            ax1.set_yticks(np.append([-.025, 0, .025, .05, .075], np.arange(.1, .4, .05)))
-        else:
-            ax1.set_yticks(np.append([0, .025, .05, .075], np.arange(.1, .4, .05)))
+        ax1.set_yticks(np.append([0, .025, .05, .075], np.arange(.1, .4, .05)))
     # draw grid
     ax1.set_axisbelow(True)
     plt.grid(axis='y', linestyle='dotted', linewidth=size/6)
     plt.setp(list(ax1.spines.values()), linewidth=size/10)
     # Plot Polar Plots for importances
-    if EFA == True:
-        reorder_vec = results.EFA.get_factor_reorder(results.EFA.results['num_factors'])
-        reorder_fun = lambda x: [x[i] for i in reorder_vec]
+    if EFA is not None:
+        if EFA == True:
+            reorder_fun = lambda x: [x[i] for i in range(len(x))]
+        else:
+            reorder_vec = EFA.get_factor_reorder(EFA.results['num_factors'])
+            reorder_fun = lambda x: [x[i] for i in reorder_vec]
         # get importances
         vals = [predictions[i] for i in target_order]
         importances = [(reorder_fun(i['predvars']), 
@@ -212,17 +266,20 @@ def plot_prediction(results, target_order=None, EFA=True, classifier='ridge',
         # mask heights
         plot_heights = [plot_heights[i] if r2s[i][1]>shuffled_r2s[i][1] else np.nan
                         for i in range(len(plot_heights))]
-        plot_x = (ax1.get_xticks()-xlow)/(xhigh-xlow)-(1/N/2)
+        plot_size = min(1/N, 1/9)
+        plot_x = (ax1.get_xticks()-xlow)/(xhigh-xlow)-(plot_size/2)
         for i, importance in enumerate(importances):
             if pd.isnull(plot_heights[i]):
                 continue
-            axes.append(fig.add_axes([plot_x[i], plot_heights[i], 1/N,1/N], projection='polar'))
+            axes.append(fig.add_axes([plot_x[i], plot_heights[i], plot_size, plot_size], projection='polar'))
             color = colors[1]
             visualize_importance(importance, axes[-1],
-                                 yticklabels=False, xticklabels=False,
+                                 yticklabels=False, 
+                                 xticklabels=False,
                                  label_size=figsize[1]*1,
                                  color=color,
-                                 axes_linewidth=size/10)
+                                 axes_linewidth=size/10,
+                                 show_sign=show_sign)
         # plot top 2 predictions, labeled  
         if best_predictors[-1][0] < best_predictors[-2][0]:
             locs = [.32, .68]
@@ -232,7 +289,8 @@ def plot_prediction(results, target_order=None, EFA=True, classifier='ridge',
         # write abbreviation key
         pad = 0
         text = [(l, shortened_factors.get(l, None)) for l in label_importance[0]] # for abbeviations text
-        if len([True for t in text if t[1] is not None]) > 0:
+        text = [t for t in text if t[1] is not None]
+        if len(text) > 0:
             pad = .05
             text_ax = fig.add_axes([.8,.56,.1,.34]) 
             text_ax.tick_params(labelsize=0)
@@ -244,34 +302,34 @@ def plot_prediction(results, target_order=None, EFA=True, classifier='ridge',
                 
         ratio = figsize[1]/figsize[0]
         axes.append(fig.add_axes([locs[0]-.2*ratio-pad,.56,.3*ratio,.3], projection='polar'))
-        visualize_importance(label_importance, axes[-1], yticklabels=False,
+        visualize_importance(label_importance, axes[-1], 
+                             yticklabels=False,
                              xticklabels=True,
                              label_size=max(figsize[1]*1.5, 5),
                              label_scale=.22,
                              title=best_predictors[-1][1][0],
                              color=colors[1],
-                             axes_linewidth=size/10)
+                             axes_linewidth=size/10,
+                             show_sign=show_sign)
         # 2nd top
         label_importance = importances[best_predictors[-2][0]]
         ratio = figsize[1]/figsize[0]
         axes.append(fig.add_axes([locs[1]-.2*ratio-pad,.56,.3*ratio,.3], projection='polar'))
-        visualize_importance(label_importance, axes[-1], yticklabels=False,
+        visualize_importance(label_importance, axes[-1], 
+                             yticklabels=False,
                              xticklabels=True,
                              label_size=max(figsize[1]*1.5, 5),
                              label_scale=.22,
                              title=best_predictors[-2][1][0],
                              color=colors[1],
-                             axes_linewidth=size/10)
+                             axes_linewidth=size/10,
+                             show_sign=show_sign)
         
-    if plot_dir is not None:
-        changestr = '_change' if change else ''
-        if EFA:
-            filename = 'EFA%s_%s_prediction_bar.%s' % (changestr, classifier, ext)
-        else:
-            filename = 'IDM%s_%s_prediction_bar.%s' % (changestr, classifier, ext)
-        save_figure(fig, path.join(plot_dir, filename), 
-                    {'bbox_inches': 'tight', 'dpi': dpi})
+    if filename is not None:
+        save_figure(fig, filename+'.%s' % ext, {'bbox_inches': 'tight', 'dpi': dpi})
         plt.close()
+    else:
+        return fig
 
 def plot_prediction_scatter(results, target_order=None, EFA=True, change=False,
                             classifier='ridge', rotate='oblimin', 
