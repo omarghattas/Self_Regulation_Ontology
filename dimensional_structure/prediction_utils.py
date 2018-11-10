@@ -12,7 +12,8 @@ def run_prediction(predictors, demographics, output_base='',
                    outfile='prediction', save=True,
                    verbose=False, classifier='lasso',
                    shuffle=False, n_jobs=2, imputer="SoftImpute",
-                   smote_cutoff=.3, freq_threshold=.1):
+                   smote_cutoff=.3, freq_threshold=.1,
+                   binarize=True):
     
     output_dir=os.path.join(output_base,'prediction_outputs')
     
@@ -26,7 +27,8 @@ def run_prediction(predictors, demographics, output_base='',
                       imputer=imputer,
                       smote_cutoff=smote_cutoff,
                       freq_threshold=freq_threshold)
-    bp.binarize_ZI_demog_vars()
+    if binarize:
+        bp.binarize_ZI_demog_vars()
     vars_to_test=[v for v in bp.demogdata.columns if not v in bp.skip_vars]
     for v in vars_to_test:
         # run regression into non-null number is found. Should only be run once!
@@ -36,16 +38,17 @@ def run_prediction(predictors, demographics, output_base='',
         insample_scores, importances, clf = bp.run_prediction(v)
         if verbose:
             print('Predicting %s' % v)
-            if pd.isnull(cv_scores[0]['R2']):
-                print('No predictor variance in CV model!')
-            if pd.isnull(insample_scores[0]['R2']):
-                print('No predictor variance in insample model!')
+            if 'R2' in cv_scores[0].keys():
+                if pd.isnull(cv_scores[0]['R2']):
+                    print('No predictor variance in CV model!')
+                if pd.isnull(insample_scores[0]['R2']):
+                    print('No predictor variance in insample model!')
         bp.scores[v], bp.importances[v], bp.clfs[v] = cv_scores, importances, clf
         bp.scores_insample[v] = insample_scores
-        
     if save == True:
         bp.write_data(vars_to_test)
-    return bp
+    else:
+        return bp.get_output(vars_to_test)
 
 def print_prediction_performance(results, EFA=True):
     for classifier in ['ridge', 'lasso', 'rf', 'svm']:

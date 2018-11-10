@@ -53,7 +53,7 @@ class BehavPredict:
                  reliabilities=None,
                  output_dir='prediction_outputs',
                  outfile=None,
-                 binary_classifier='rf',
+                 binary_classifier='svm',
                  classifier='rf',
                  verbose=False,
                  n_jobs=1,
@@ -73,6 +73,7 @@ class BehavPredict:
         self.hostname = socket.gethostname()
         self.verbose = verbose
         self.shuffle = int(shuffle)
+        self.binary_classifier = binary_classifier
         self.classifier = classifier
         self.output_dir = output_dir
         self.outfile = outfile
@@ -249,7 +250,7 @@ class BehavPredict:
                 Xdata=scale.fit_transform(Xdata)
             binary_clf.fit(Xdata,Ydata)
             pred=binary_clf.predict(Xdata)
-            if numpy.var(self.pred)==0:
+            if numpy.var(pred)==0:
                 if self.verbose:
                     print('zero variance in predictions')
                 scores.append({'ROC_AUC': numpy.nan})
@@ -505,28 +506,8 @@ class BehavPredict:
             print('scores:',scores)
         return scores
     
-    def write_data(self, vars):
-        shuffle_flag='shuffle_' if self.shuffle else ''
+    def get_output(self, vars):
         h='%08x'%random.getrandbits(32)
-        if type(self.classifier) == str:
-            classifier_name = self.classifier
-        else:
-            try:
-                classifier_name = self.classifier.__name__
-            except AttributeError:
-                classifier_name = 'Unknown'
-        if self.outfile is None:
-            outfile='prediction_%s_%s_%s%s%s.pkl' % (self.predictor_set,
-                                                     classifier_name,
-                                                     shuffle_flag,
-                                                     h)
-        else:
-            outfile = self.outfile.rstrip('.pkl')
-            outfile = outfile + '_%s_%s%s.pkl' % (classifier_name, shuffle_flag, h)
-        if not os.path.exists(self.output_dir):
-            os.makedirs(self.output_dir, exist_ok=True)
-        if self.verbose:
-            print('saving to',os.path.join(self.output_dir,outfile))
         if not isinstance(vars,list):
             vars=[vars]
 
@@ -553,6 +534,32 @@ class BehavPredict:
                 if self.verbose:
                     print('no insample scores for',v)
                 pass
+        return info
+            
+    def write_data(self, vars):
+        shuffle_flag='shuffle_' if self.shuffle else ''
+        h='%08x'%random.getrandbits(32)
+        if type(self.classifier) == str:
+            classifier_name = self.classifier
+        else:
+            try:
+                classifier_name = self.classifier.__name__
+            except AttributeError:
+                classifier_name = 'Unknown'
+        if self.outfile is None:
+            outfile='prediction_%s_%s_%s%s%s.pkl' % (self.predictor_set,
+                                                     classifier_name,
+                                                     shuffle_flag,
+                                                     h)
+        else:
+            outfile = self.outfile.rstrip('.pkl')
+            outfile = outfile + '_%s_%s%s.pkl' % (classifier_name, shuffle_flag, h)
+        if not os.path.exists(self.output_dir):
+            os.makedirs(self.output_dir, exist_ok=True)
+        if self.verbose:
+            print('saving to',os.path.join(self.output_dir,outfile))
+            
+        info = self.get_output(vars)
         pickle.dump(info,
                     open(os.path.join(self.output_dir,outfile),'wb'))
         
