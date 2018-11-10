@@ -6,7 +6,6 @@ import numpy as np
 import os
 import pandas as pd
 import pickle
-from sklearn.linear_model import LinearRegression
 from selfregulation.prediction.behavpredict import BehavPredict
 
 def run_prediction(predictors, demographics, output_base='', 
