@@ -38,12 +38,13 @@ def visualize_importance(importance, ax, xticklabels=True, yticklabels=True,
     if xticklabels:
         if type(importance_vars[0]) != str:
             importance_vars = ['Fac %s' % str(i+1) for i in importance_vars]
+        ticks = importance_vars
         scale = 1+label_scale
         size = ax.get_position().expanded(scale, scale)
         ax2=ax.get_figure().add_axes(size,zorder=2)
-        for i, var in enumerate(importance_vars):
+        for i, text in enumerate(ticks):
             fontcolor='k'
-            if importance[1][i] < 0:
+            if importance[1][i] < 0 and show_sign:
                 fontcolor = 'r'
             arc_start = (i+.1)*2*np.pi/len(importance_vars)
             arc_end = (i+.9)*2*np.pi/len(importance_vars)
@@ -55,7 +56,7 @@ def visualize_importance(importance, ax, xticklabels=True, yticklabels=True,
             curvetext = CurvedText(
                 x = curve[0][::-1],
                 y = curve[1][::-1],
-                text=var, #'this this is a very, very long text',
+                text=text, #'this this is a very, very long text',
                 va = 'bottom',
                 axes = ax2,
                 fontsize=label_size,
@@ -129,9 +130,9 @@ def plot_results_prediction(results, target_order=None, EFA=True,
     if plot_dir is not None:
         changestr = '_change' if change else ''
         if EFA:
-            filename = 'EFA%s_%s_prediction_bar.%s' % (changestr, classifier)
+            filename = 'EFA%s_%s_prediction_bar' % (changestr, classifier)
         else:
-            filename = 'IDM%s_%s_prediction_bar.%s' % (changestr, classifier)
+            filename = 'IDM%s_%s_prediction_bar' % (changestr, classifier)
         filename = path.join(plot_dir, filename)
     else:
         filename = None
@@ -268,10 +269,11 @@ def plot_prediction(predictions, shuffled_predictions, EFA=None,
                         for i in range(len(plot_heights))]
         plot_size = min(1/N, 1/9)
         plot_x = (ax1.get_xticks()-xlow)/(xhigh-xlow)-(plot_size/2)
+        ratio = figsize[1]/figsize[0]
         for i, importance in enumerate(importances):
             if pd.isnull(plot_heights[i]):
                 continue
-            axes.append(fig.add_axes([plot_x[i], plot_heights[i], plot_size, plot_size], projection='polar'))
+            axes.append(fig.add_axes([plot_x[i], plot_heights[i], plot_size*ratio, plot_size], projection='polar'))
             color = colors[1]
             visualize_importance(importance, axes[-1],
                                  yticklabels=False, 
@@ -279,6 +281,7 @@ def plot_prediction(predictions, shuffled_predictions, EFA=None,
                                  label_size=figsize[1]*1,
                                  color=color,
                                  axes_linewidth=size/10,
+                                 label_scale=.1,
                                  show_sign=show_sign)
         # plot top 2 predictions, labeled  
         if best_predictors[-1][0] < best_predictors[-2][0]:
@@ -293,14 +296,17 @@ def plot_prediction(predictions, shuffled_predictions, EFA=None,
         if len(text) > 0:
             pad = .05
             text_ax = fig.add_axes([.8,.56,.1,.34]) 
-            text_ax.tick_params(labelsize=0)
+            text_ax.tick_params(which='both', 
+                                bottom=False, 
+                                labelbottom=False,
+                                left=False,
+                                labelleft=False)
             for spine in ['top','right','bottom','left']:
                 text_ax.spines[spine].set_visible(False)
             for i, (val, abr) in enumerate(text):
                 text_ax.text(0, i/len(text), abr+':', fontsize=size*1.2)
                 text_ax.text(.5, i/len(text), val, fontsize=size*1.2)
                 
-        ratio = figsize[1]/figsize[0]
         axes.append(fig.add_axes([locs[0]-.2*ratio-pad,.56,.3*ratio,.3], projection='polar'))
         visualize_importance(label_importance, axes[-1], 
                              yticklabels=False,

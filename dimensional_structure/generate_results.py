@@ -12,7 +12,7 @@ parser.add_argument('-no_group_analysis', action='store_false')
 parser.add_argument('-no_group_plot', action='store_false')
 parser.add_argument('-bootstrap', action='store_true')
 parser.add_argument('-boot_iter', type=int, default=1000)
-parser.add_argument('-shuffle_repeats', type=int, default=1)
+parser.add_argument('-shuffle_repeats', type=int, default=10)
 parser.add_argument('-subsets', nargs='+', default=['task', 'survey'])
 parser.add_argument('-classifiers', nargs='+', default=['lasso', 'ridge',  'svm', 'rf'])
 parser.add_argument('-plot_backend', default=None)
@@ -64,7 +64,7 @@ from dimensional_structure.EFA_test_retest import (calc_EFA_retest,
                                                    plot_EFA_retest, 
                                                    plot_cross_EFA_retest)
 from dimensional_structure.HCA_plots import plot_HCA
-from dimensional_structure.prediction_plots import (plot_prediction, 
+from dimensional_structure.prediction_plots import (plot_results_prediction, 
                                                     plot_prediction_scatter,
                                                     plot_prediction_comparison,
                                                     plot_factor_fingerprint)
@@ -187,7 +187,7 @@ for subset in subsets:
         # ***************************** saving ****************************************
         prediction_dir = path.join(results.get_output_dir(), 'prediction_outputs')
         for classifier in classifiers:
-            for change_flag in [False, True]:
+            for change_flag in [False]: # add True if you want to predict change
                 prediction_files = glob(path.join(prediction_dir, '*%s*' % classifier))
                 # filter by change
                 prediction_files = filter(lambda x: ('change' in x) == change_flag, prediction_files)
@@ -253,24 +253,25 @@ for subset in subsets:
             for classifier in classifiers:
                 for EFA in [True, False]:
                     print("Plotting Prediction, classifier: %s, EFA: %s" % (classifier, EFA))
-                    plot_prediction(results, target_order=target_order, EFA=EFA, 
-                                    classifier=classifier, plot_dir=prediction_plot_dir,
-                                    dpi=dpi,
-                                    ext=ext,
-                                    size=size)
+                    plot_results_prediction(results, target_order=target_order, EFA=EFA, 
+                                            classifier=classifier, plot_dir=prediction_plot_dir,
+                                            dpi=dpi,
+                                            ext=ext,
+                                            size=size)
                     plot_prediction_scatter(results, target_order=target_order, EFA=EFA, 
                                     classifier=classifier, plot_dir=prediction_plot_dir,
                                     dpi=dpi,
                                     ext=ext,
                                     size=size)
+                    """
                     print("Plotting Change Prediction, classifier: %s, EFA: %s" % (classifier, EFA))
                     try:
-                        plot_prediction(results, target_order=change_target_order, 
-                                        EFA=EFA, change=True,
-                                        classifier=classifier, plot_dir=prediction_plot_dir,
-                                        dpi=dpi,
-                                        ext=ext,
-                                        size=size)
+                        plot_results_prediction(results, target_order=change_target_order, 
+                                                EFA=EFA, change=True,
+                                                classifier=classifier, plot_dir=prediction_plot_dir,
+                                                dpi=dpi,
+                                                ext=ext,
+                                                size=size)
                         plot_prediction_scatter(results, target_order=change_target_order, 
                                         EFA=EFA, change=True,
                                         classifier=classifier, plot_dir=prediction_plot_dir,
@@ -279,7 +280,7 @@ for subset in subsets:
                                         size=size)
                     except AssertionError:
                         print('No shuffled data was found for %s change predictions, EFA: %s' % (name, EFA))
-                        
+                    """
             plot_prediction_comparison(results, change=False, size=size, ext=ext,
                                        dpi=dpi, plot_dir=prediction_plot_dir)
             plot_prediction_comparison(results, change=True, size=size, ext=ext, 
