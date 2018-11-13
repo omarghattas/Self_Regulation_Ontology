@@ -14,7 +14,7 @@ import subprocess
 import warnings
 
 from sklearn.ensemble import ExtraTreesClassifier,ExtraTreesRegressor
-from sklearn.model_selection import cross_val_score,StratifiedKFold,ShuffleSplit
+from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import roc_auc_score,mean_absolute_error
 from sklearn.linear_model import (LassoCV,LogisticRegressionCV,
                                   LogisticRegression,RidgeCV)
@@ -277,9 +277,9 @@ class BehavPredict:
                                 lambda_preset=None)
 
             else:
-                clf=LassoCV(max_iter=5000)
+                clf=LassoCV(cv=5, max_iter=5000)
         elif self.classifier=='ridge':
-            clf = RidgeCV()    
+            clf = RidgeCV(cv=5)    
         elif self.classifier=='svm':
             clf = svm.LinearSVR()
         else:
@@ -364,7 +364,7 @@ class BehavPredict:
             clf = self.binary_classifier
         # set up crossvalidation
         if not outer_cv:
-            outer_cv=StratifiedKFold(n_splits=self.n_outer_splits,shuffle=True)
+            outer_cv=StratifiedKFold(n_splits=self.n_outer_splits, shuffle=True)
         # set up data
         Ydata=self.demogdata[v].dropna().copy()
         Xdata=self.behavdata.loc[Ydata.index,:].copy()
@@ -437,9 +437,9 @@ class BehavPredict:
                            self.n_jobs,
                            nlambda=None)
             else:
-                clf=LassoCV(max_iter=5000)
+                clf=LassoCV(cv=5, max_iter=5000)
         elif self.classifier=='ridge':
-            clf = RidgeCV()      
+            clf = RidgeCV(cv=5)      
         elif self.classifier=='svm':
             clf = svm.LinearSVR()
         else:
