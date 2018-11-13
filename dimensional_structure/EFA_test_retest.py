@@ -163,7 +163,11 @@ def plot_EFA_change(combined, ax=None, color_on=False,
         ax.plot(retest_pca[i,0], retest_pca[i,1], marker='o', 
                  markersize=markersize, color=color, 
                  linewidth=linewidth, label=label[1])
-    ax.tick_params(labelsize=0, pad=size/2)
+    ax.tick_params(which='both', 
+                   bottom=False, 
+                   labelbottom=False,
+                   left=False,
+                   labelleft=False)
     ax.set_xlabel('PC 1', fontsize=size*2.5)
     ax.set_ylabel('PC 2', fontsize=size*2.5)
     ax.set_ylim(ax.get_xlim())
@@ -229,16 +233,18 @@ def plot_cross_EFA_retest(all_results, size=4.6, dpi=300, EFA_retest_fun=None,
         if i == len(all_results)-1:
             sns.heatmap(corr, square=True, ax=ax2, cbar_ax=cbar_ax, 
                         vmin=-1, vmax=1,
+                        cmap=sns.diverging_palette(220,15,n=100,as_cmap=True),
                         cbar_kws={'orientation': 'horizontal',
                                   'ticks': [-1, 0, 1]},
                         annot=annot,
                         annot_kws={'fontsize': annot_fontsize}); 
             
             cbar_ax.set_xlabel('Pearson Correlation', fontsize=size*1.5)
-            cbar_ax.tick_params(labelsize=size, pad=size/2)
+            cbar_ax.tick_params(labelsize=size, pad=size/2, width=size/6)
         else:
             sns.heatmap(corr, square=True, ax=ax2, vmin=-1, vmax=1,
                         cbar=False, annot=annot,
+                        cmap=sns.diverging_palette(220,15,n=100,as_cmap=True),
                         annot_kws={'fontsize': annot_fontsize})
         ax2.set_xticklabels('')
         ax2.set_yticklabels(ax2.get_yticklabels(), rotation=0)

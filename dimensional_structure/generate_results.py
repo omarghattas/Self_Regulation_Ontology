@@ -50,6 +50,7 @@ import subprocess
 import time
 
 from dimensional_structure.results import Results
+from dimensional_structure.cross_results_utils import (run_cross_prediction)
 from dimensional_structure.cross_results_plots import (plot_corr_heatmap, 
                                                        plot_glasso_edge_strength,
                                                        plot_cross_within_prediction,
@@ -309,6 +310,10 @@ if group_analysis == True:
                          shuffle=False, classifier='ridge',
                          include_raw_demographics=False, rotate='oblimin',
                          verbose=False)
+    output_loc = path.dirname(all_results['task'].get_output_dir())
+    prediction_loc = path.join(output_loc, 'cross_prediction.pkl')
+    if not path.exists(prediction_loc):
+        run_cross_prediction(all_results, save=True)
 
 if group_plot == True:
     if verbose:
