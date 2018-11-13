@@ -92,7 +92,7 @@ def visualize_importance(importance, ax, xticklabels=True, yticklabels=True,
         for center in centers:
             ax.axvspan(xmin=center-gap/2, xmax=center+gap/2,
                        ymin=ylim[0], ymax=ylim[1]+1,
-                       facecolor='r', alpha=.2)
+                       facecolor='r', alpha=.1)
 
 def plot_results_prediction(results, target_order=None, EFA=True, 
                             classifier='ridge',rotate='oblimin', 
