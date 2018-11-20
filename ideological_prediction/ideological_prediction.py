@@ -1,3 +1,9 @@
+# remove sklearn deprecation warnings
+def warn(*args, **kwargs):
+    pass
+import warnings
+warnings.warn = warn
+
 from fancyimpute import SoftImpute
 from os import makedirs, path
 import pandas as pd
@@ -40,6 +46,9 @@ shuffled_predictions = {}
 classifier = 'ridge'
 for predictor_key, scores in predictors.items():
     for target_key, target in targets.items():
+        print('*'*79)
+        print('Running Prediction: %s predicting %s' % (predictor_key, target_key))
+        print('*'*79)
         predictions[(predictor_key, target_key)] = \
                     run_prediction(scores, 
                                    target, 
@@ -66,6 +75,7 @@ predictor_key = 'raw_measures'
 scores = get_behav_data(file='meaningful_variables_imputed.csv')
 classifier = 'lasso'
 for target_key, target in targets.items():
+    print('Running Prediction: raw measures predicting %s' % target_key)
     predictions[(predictor_key, target_key)] = \
                 run_prediction(scores, 
                                target, 

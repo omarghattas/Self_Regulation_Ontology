@@ -118,7 +118,7 @@ def plot_prediction(predictions, shuffled_predictions,
     prediction_keys = predictions.keys()
     # get prediction success
     # plot
-    shuffled_grey = [.3,.3,.3]
+    shuffled_grey = [.3,.3,.3,.5]
     # plot variables
     figsize = (size, size*.75)
     fig = plt.figure(figsize=figsize)
@@ -142,16 +142,16 @@ def plot_prediction(predictions, shuffled_predictions,
         
         ind = np.arange(len(r2s))
         ax1.bar(ind+width*predictor_i, [i[1] for i in r2s], width, 
-                label='%s Prediction' % ' '.join(key.title().split('_')), 
-                color=colors[predictor_i])
+                label='%s Prediction' % ' '.join(key.title().split('_')),
+                linewidth=0, color=colors[predictor_i])
         # plot shuffled values above
         if predictor_i == len(prediction_keys)-1:
             shuffled_label = '95% shuffled prediction'
         else:
             shuffled_label = None
         ax1.bar(ind+width*predictor_i, [i[1] for i in shuffled_r2s], width, 
-                 color='none', edgecolor=shuffled_grey, 
-                linewidth=size/10, linestyle='--', label=shuffled_label)
+                 color=shuffled_grey, linewidth=0, 
+                 label=shuffled_label)
         
     ax1.set_xticks(np.arange(0,len(r2s))+width/2)
     ax1.set_xticklabels(['\n'.join(i[0].split()) for i in r2s], 
@@ -165,7 +165,7 @@ def plot_prediction(predictions, shuffled_predictions,
         ax1.set_ylabel(metric, fontsize=basefont*1.5, labelpad=size*1.5)
     # add a legend
     leg = ax1.legend(fontsize=basefont*1.4, loc='upper right', 
-                     bbox_to_anchor=(1.1, 1.1), frameon=True, 
+                     bbox_to_anchor=(1.2, 1.1), frameon=True, 
                      handlelength=0, handletextpad=0, framealpha=1)
     beautify_legend(leg, colors[:len(predictions)]+[shuffled_grey])
     # draw grid
@@ -194,8 +194,8 @@ def plot_prediction_scatter(predictions, predictors, targets,
     for i,v in enumerate(target_order):
         MAE = format_num(predictions[v]['scores_cv'][0]['MAE'])
         R2 = format_num(predictions[v]['scores_cv'][0]['R2'])
-        axes[i].set_title('%s\nR2: %s, MAE: %s' % (v, R2, MAE), 
-            fontweight='bold', fontsize=size*1.2)
+        axes[i].set_title('%s\nR2: %s, MAE: %s' % ('\n'.join(v.split()), R2, MAE), 
+            fontweight='bold', fontsize=size*1)
         clf=predictions[v]['clf']
         axes[i].scatter(targets[v], clf.predict(predictors), s=size*2.5,
                         edgecolor='white', linewidth=size/30)  
@@ -215,86 +215,15 @@ def plot_prediction_scatter(predictions, predictors, targets,
     empty_plots = n_cols*n_rows - len(targets.columns)
     for ax in axes[-empty_plots:]:
         ax.set_visible(False)
-    plt.subplots_adjust(hspace=.4, wspace=.3)
-    
+    plt.subplots_adjust(hspace=.6, wspace=.3)
     if filename is not None:
         save_figure(fig, filename, {'bbox_inches': 'tight', 'dpi': dpi})
         plt.close()
-        
-def plot_prediction_comparison(results, size=4.6, change=False,
-                               dpi=300, ext='png', plot_dir=None):
-    R2s = {}
-    for EFA in [False, True]:
-        predictions = results.get_prediction_files(EFA=EFA, change=change, 
-                                                   shuffle=False)
-        predictions = sorted(predictions, key = path.getmtime)
-        classifiers = np.unique([i.split('_')[-2] for i in predictions])
-        # get last prediction file of each type
-        for classifier in classifiers:
-            filey = [i for i in predictions if classifier in i][-1]
-            prediction_object = pickle.load(open(filey, 'rb'))['data']
-            R2 = [i['scores_cv'][0]['R2'] for i in prediction_object.values()]
-            R2 = np.nan_to_num(R2)
-            feature = 'EFA' if EFA else 'IDM'
-            R2s[feature+'_'+classifier] = R2
 
-    R2s = pd.DataFrame(R2s).melt(var_name='Classifier', value_name='R2')
-    R2s['Feature'], R2s['Classifier'] = R2s.Classifier.str.split('_', 1).str
-    f = plt.figure(figsize=(size, size*.62))
-    sns.barplot(x='Classifier', y='R2', data=R2s, hue='Feature',
-                palette=colors[1:3], errwidth=size/5)
-    ax = plt.gca()
-    ax.tick_params(axis='y', labelsize=size*1.8)
-    ax.tick_params(axis='x', labelsize=size*1.8)
-    leg = ax.legend(fontsize=size*2, loc='upper right')
-    beautify_legend(leg, colors[1:3])
-    plt.xlabel('Classifier', fontsize=size*2.2, labelpad=size/2)
-    plt.ylabel('R2', fontsize=size*2.2, labelpad=size/2)
-    plt.title('Comparison of Prediction Methods', fontsize=size*2.5, y=1.05)
-    
-    if plot_dir is not None:
-        filename = 'prediction_comparison.%s' % ext
-        save_figure(f, path.join(plot_dir, filename), 
-                    {'bbox_inches': 'tight', 'dpi': dpi})
-        plt.close()
-    
-def plot_prediction_relevance(results, EFA=True, classifier='ridge', 
-                              rotate='oblimin', change=False, size=4.6, 
-                              dpi=300, ext='png', plot_dir=None):
-    """ Plots the relevant relevance of each factor for predicting all outcomes """
-    predictions = results.load_prediction_object(EFA=EFA, 
-                                                 change=change,
-                                                 classifier=classifier,
-                                                 rotate=rotate)['data']
-
-    targets = list(predictions.keys())
-    predictors = predictions[targets[0]]['predvars']
-    importances = abs(np.vstack([predictions[k]['importances'] for k in targets]))
-    # scale to 0-1 
-    scaler = MinMaxScaler()
-    scaled_importances = scaler.fit_transform(importances.T).T
-    # make proportion
-    scaled_importances = scaled_importances/np.expand_dims(scaled_importances.sum(1),1)
-    # convert to dataframe
-    scaled_df = pd.DataFrame(scaled_importances, index=targets, columns=predictors)
-    melted = scaled_df.melt(var_name='Factor', value_name='Importance')
-    plt.figure(figsize=(8,12))
-    f=sns.boxplot(y='Factor', x='Importance',  data=melted,
-                  width=.5)
-    if plot_dir is not None:
-        filename = 'prediction_relevance'
-        save_figure(f, path.join(plot_dir, filename), 
-                    {'bbox_inches': 'tight', 'dpi': dpi})
-        plt.close()
-
-def plot_outcome_ontological_similarity(results, EFA=True, classifier='ridge', 
-                                        rotate='oblimin', change=False, size=4.6, 
-                                        dpi=300, ext='png',  plot_dir=None):
+def plot_outcome_ontological_similarity(predictions, size=4.6, 
+                                        dpi=300, filename=None):
     """ plots similarity of ontological fingerprints between outcomes """
-    predictions = results.load_prediction_object(EFA=EFA, 
-                                                 change=change,
-                                                 classifier=classifier,
-                                                 rotate=rotate)['data']
+
 
     targets = list(predictions.keys())
     predictors = predictions[targets[0]]['predvars']
@@ -306,9 +235,6 @@ def plot_outcome_ontological_similarity(results, EFA=True, classifier='ridge',
                      cmap=sns.diverging_palette(220,15,n=100,as_cmap=True))
     ax = f.ax_heatmap
     ax.set_yticklabels(ax.get_yticklabels(), rotation=0)
-    if plot_dir is not None:
-        filename = 'prediction_relevance'
-        save_figure(f, path.join(plot_dir, filename), 
-                    {'bbox_inches': 'tight', 'dpi': dpi})
+    if filename is not None:
+        save_figure(f, filename, {'bbox_inches': 'tight', 'dpi': dpi})
         plt.close()
-    
