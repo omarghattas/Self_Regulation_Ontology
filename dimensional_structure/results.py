@@ -647,7 +647,7 @@ class Results(EFA_Analysis, HCA_Analysis):
             for predictors in [('EFA%s_%s' % (c, rotate), factor_scores), ('raw', raw_data)]:
                 # predicting using best EFA
                 if verbose: print('**Predicting using %s**' % predictors[0])
-                run_prediction(predictors[1], 
+                _ = run_prediction(predictors[1], 
                                target, 
                                self.get_output_dir(),
                                outfile='%s_%s_prediction' % (predictors[0], target_name), 
@@ -680,7 +680,7 @@ class Results(EFA_Analysis, HCA_Analysis):
             for predictors in [('EFA%s_%s' % (c, rotate), factor_scores), ('raw', raw_data)]:
                 # predicting using best EFA
                 if verbose: print('**Predicting using %s**' % predictors[0])
-                run_prediction(predictors[1], 
+                _ = run_prediction(predictors[1], 
                                target, 
                                self.get_output_dir(),
                                outfile='%s_%s_prediction' % (predictors[0], target_name), 
