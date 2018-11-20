@@ -9,7 +9,6 @@ from sklearn.linear_model import RidgeCV
 from sklearn.model_selection import cross_val_score, KFold
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
-from dimensional_structure.prediction_utils import run_prediction
 
 def run_cross_prediction(all_results, verbose=False, save=True):
     # within

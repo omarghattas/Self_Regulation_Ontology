@@ -47,8 +47,7 @@ def run_prediction(predictors, demographics, output_base='',
         bp.scores_insample[v] = insample_scores
     if save == True:
         bp.write_data(vars_to_test)
-    else:
-        return bp.get_output(vars_to_test)
+    return bp.get_output(vars_to_test)
 
 def print_prediction_performance(results, EFA=True):
     for classifier in ['ridge', 'lasso', 'rf', 'svm']:
