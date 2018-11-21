@@ -22,7 +22,7 @@ targets = data['targets']
 predictions = odict()
 shuffled_predictions = odict()
 for target in targets.keys():
-    for predictor_key in ['demographics', 'task', 'survey', 'full_ontology']:
+    for predictor_key in ['demographics', 'task', 'survey', 'full_ontology', 'raw_measures']:
         predictions[predictor_key] = all_predictions[(predictor_key, target)]
         shuffled_predictions[predictor_key] = all_shuffled_predictions[(predictor_key, target)]
         # plot scatter plot
@@ -32,10 +32,11 @@ for target in targets.keys():
             size=15,
             filename=path.join(plot_dir, '%s_%s_scatter.png' % (predictor_key, target)))
         # plot ontological similarity
-        plot_outcome_ontological_similarity(predictions[predictor_key],
-                        size=15,
-                        filename=path.join(plot_dir, '%s_%s_similarity.png' % (predictor_key, target)))
-                                            
+        if predictor_key != 'raw_measures':
+            plot_outcome_ontological_similarity(predictions[predictor_key],
+                            size=15,
+                            filename=path.join(plot_dir, '%s_%s_similarity.png' % (predictor_key, target)))
     plot_prediction(predictions, shuffled_predictions, 
                     target_order=targets[target].columns,
                     filename=path.join(plot_dir, '%s_bar.png' % target))
+    

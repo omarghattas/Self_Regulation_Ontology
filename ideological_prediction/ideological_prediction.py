@@ -72,12 +72,13 @@ for predictor_key, scores in predictors.items():
         
 # predictions with raw measures
 predictor_key = 'raw_measures'
-scores = get_behav_data(file='meaningful_variables_imputed.csv')
+DV_scores = get_behav_data(file='meaningful_variables_imputed.csv')
+predictors['raw_measures'] = DV_scores
 classifier = 'lasso'
 for target_key, target in targets.items():
     print('Running Prediction: raw measures predicting %s' % target_key)
     predictions[(predictor_key, target_key)] = \
-                run_prediction(scores, 
+                run_prediction(DV_scores, 
                                target, 
                                results_dir,
                                outfile='%s_%s_prediction' % (predictor_key, target_key), 
@@ -87,7 +88,7 @@ for target_key, target in targets.items():
                                save=True,
                                binarize=False)['data']
     shuffled_predictions[(predictor_key, target_key)] = \
-                        run_prediction(scores, 
+                        run_prediction(DV_scores, 
                                        target, 
                                        results_dir,
                                        outfile='%s_%s_prediction' % (predictor_key, target_key), 

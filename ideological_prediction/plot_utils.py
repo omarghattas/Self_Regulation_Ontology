@@ -94,6 +94,35 @@ def visualize_importance(importance, ax, xticklabels=True, yticklabels=True,
                        ymin=ylim[0], ymax=ylim[1]+1,
                        facecolor='r', alpha=.1)
 
+def polar_plots(predictions, target_order=None, show_sign=True,
+                size=5):
+        
+    if target_order is None:
+        target_order = predictions.keys()
+        
+    # get importances
+    vals = [predictions[i] for i in target_order]
+    importances = [(i['predvars'], 
+                    i['importances'][0]) for i in vals]
+                
+    f = plt.figure(figsize=(size, size))
+    axes = []
+    subplot_size = 1/len(importances)
+    for i, target in enumerate(target_order):
+        axes.append(f.add_axes([subplot_size*i*1.1, 0, subplot_size, subplot_size], projection='polar'))
+        importance = importances[i]
+        visualize_importance(importance, axes[-1],
+                     yticklabels=False, 
+                     xticklabels=True,
+                     label_size=size/4,
+                     color=[.5,.2,.7],
+                     axes_linewidth=size/20,
+                     label_scale=.23,
+                     show_sign=show_sign)
+        
+        
+
+        
 def plot_prediction(predictions, shuffled_predictions, 
                     target_order=None, 
                     metric='R2', size=4.6,  
@@ -110,7 +139,7 @@ def plot_prediction(predictions, shuffled_predictions,
         ext: extension to use for saving (e.g., pdf)
         filename: if provided, save to this location
     """
-    colors = sns.color_palette('Blues_d',4)
+    colors = sns.color_palette('Blues_d',5)
     basefont = max(size, 5)
     sns.set_style('white')
     if target_order is None:
@@ -118,12 +147,12 @@ def plot_prediction(predictions, shuffled_predictions,
     prediction_keys = predictions.keys()
     # get prediction success
     # plot
-    shuffled_grey = [.3,.3,.3,.5]
+    shuffled_grey = [.3,.3,.3,.3]
     # plot variables
     figsize = (size, size*.75)
     fig = plt.figure(figsize=figsize)
     # plot bars
-    width=.23
+    width=1/(len(prediction_keys)+1)
     ax1 = fig.add_axes([0,0,1,.5]) 
     for predictor_i, key in enumerate(prediction_keys):
         prediction = predictions[key]
@@ -140,7 +169,7 @@ def plot_prediction(predictions, shuffled_predictions,
         r2s = [(i, k) if k==k else (i,0) for i, k in r2s]
         shuffled_r2s = [(i, k) if k==k else (i,0) for i, k in shuffled_r2s]
         
-        ind = np.arange(len(r2s))
+        ind = np.arange(len(r2s))-(width*(len(prediction_keys)/2-1))
         ax1.bar(ind+width*predictor_i, [i[1] for i in r2s], width, 
                 label='%s Prediction' % ' '.join(key.title().split('_')),
                 linewidth=0, color=colors[predictor_i])
@@ -155,7 +184,7 @@ def plot_prediction(predictions, shuffled_predictions,
         
     ax1.set_xticks(np.arange(0,len(r2s))+width/2)
     ax1.set_xticklabels(['\n'.join(i[0].split()) for i in r2s], 
-                        rotation=0, fontsize=basefont*.75, ha='center')
+                        rotation=90, fontsize=basefont*.75, ha='center')
     ax1.tick_params(axis='y', labelsize=size*1.2)
     ax1.tick_params(length=size/2, width=size/10, pad=size/2, bottom=True, left=True)
     xlow, xhigh = ax1.get_xlim()
@@ -165,7 +194,7 @@ def plot_prediction(predictions, shuffled_predictions,
         ax1.set_ylabel(metric, fontsize=basefont*1.5, labelpad=size*1.5)
     # add a legend
     leg = ax1.legend(fontsize=basefont*1.4, loc='upper right', 
-                     bbox_to_anchor=(1.2, 1.1), frameon=True, 
+                     bbox_to_anchor=(1.3, 1.1), frameon=True, 
                      handlelength=0, handletextpad=0, framealpha=1)
     beautify_legend(leg, colors[:len(predictions)]+[shuffled_grey])
     # draw grid
