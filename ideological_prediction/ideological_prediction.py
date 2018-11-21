@@ -67,7 +67,7 @@ for predictor_key, scores in predictors.items():
         
 # predictions with raw measures
 predictor_key = 'raw_measures'
-scores = get_behav_data()
+scores = get_behav_data(file='meaningful_variables_imputed.csv')
 classifier = 'lasso'
 for target_key, target in targets.items():
     predictions[(predictor_key, target_key)] = \
