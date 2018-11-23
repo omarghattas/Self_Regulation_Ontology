@@ -32,7 +32,7 @@ predictors = {'survey': survey_scores,
               'full_ontology': pd.concat([survey_scores, task_scores], axis=1)}
 # define targets
 targets = {'ideo_factors': ideo_data.filter(regex='Factor'),
-           'ideo_orientations': ideo_data.drop(ideo_data.filter(regex='Factor|SECS').columns, axis=1),
+           'ideo_orientations': ideo_data.drop(ideo_data.filter(regex='Factor|SECS').columns, axis=1).drop(['Conservatism','Intellectual Humility'], axis=1),
            'ideo_policies': ideo_data.filter(regex='SECS')}
 for key, target in targets.items():
     imputed = pd.DataFrame(SoftImpute().complete(target),

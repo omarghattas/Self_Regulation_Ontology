@@ -3,7 +3,8 @@ from os import makedirs, path
 import pickle
 
 from plot_utils import (plot_outcome_ontological_similarity,
-                        plot_prediction, plot_prediction_scatter)
+                        plot_prediction, plot_prediction_scatter,
+                        polar_plots)
 from selfregulation.utils.utils import  get_info
 
 results_dir = path.join(get_info('results_directory'), 'ideology_prediction')
@@ -19,9 +20,9 @@ all_shuffled_predictions = data['all_shuffled_predictions']
 predictors = data['predictors']
 targets = data['targets']
 
-predictions = odict()
-shuffled_predictions = odict()
 for target in targets.keys():
+    predictions = odict()
+    shuffled_predictions = odict()
     for predictor_key in ['demographics', 'task', 'survey', 'full_ontology', 'raw_measures']:
         predictions[predictor_key] = all_predictions[(predictor_key, target)]
         shuffled_predictions[predictor_key] = all_shuffled_predictions[(predictor_key, target)]
@@ -39,4 +40,11 @@ for target in targets.keys():
     plot_prediction(predictions, shuffled_predictions, 
                     target_order=targets[target].columns,
                     filename=path.join(plot_dir, '%s_bar.png' % target))
-    
+    # drop some unneeded predictions
+    for key in ['demographics', 'raw_measures']:
+        del predictions[key]
+    if target == 'ideo_factors':
+        polar_plots(predictions, target_order=targets[target].columns,
+                    size=10,
+                    filename=path.join(plot_dir, '%s_polar_plots.png' % target))
+        

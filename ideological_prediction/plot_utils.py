@@ -1,12 +1,10 @@
 import math
 import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
+from matplotlib.colors import ListedColormap
+import matplotlib as mpl
 import numpy as np
-from os import path
 import pandas as pd
-import pickle
 import seaborn as sns
-from sklearn.preprocessing import MinMaxScaler
 from dimensional_structure.plot_utils import get_short_names, plot_loadings
 from selfregulation.utils.plot_utils import beautify_legend, CurvedText, format_num, save_figure
 
@@ -46,8 +44,8 @@ def visualize_importance(importance, ax, xticklabels=True, yticklabels=True,
             fontcolor='k'
             if importance[1][i] < 0 and show_sign:
                 fontcolor = 'r'
-            arc_start = (i+.1)*2*np.pi/len(importance_vars)
-            arc_end = (i+.9)*2*np.pi/len(importance_vars)
+            arc_start = (i+.25)*2*np.pi/len(importance_vars)
+            arc_end = (i+.85)*2*np.pi/len(importance_vars)
             curve = [
                 .85*np.cos(np.linspace(arc_start,arc_end,100)),
                 .85*np.sin(np.linspace(arc_start,arc_end,100))
@@ -91,36 +89,110 @@ def visualize_importance(importance, ax, xticklabels=True, yticklabels=True,
                 centers.append(data_coords[0][i])
         for center in centers:
             ax.axvspan(xmin=center-gap/2, xmax=center+gap/2,
-                       ymin=ylim[0], ymax=ylim[1]+1,
+                       ymin=ylim[0], ymax=ylim[1]*50,
                        facecolor='r', alpha=.1)
 
-def polar_plots(predictions, target_order=None, show_sign=True,
-                size=5):
-        
+
+def polar_plots(predictions, target_order=None, show_sign=True, 
+                colorbar=True, size=5, dpi=300, filename=None):
+    # set up color styling
+    if show_sign:
+        palette = sns.dark_palette("blue", 100)
+    else:
+        palette = sns.cubehelix_palette(100)
+    # plot
     if target_order is None:
-        target_order = predictions.keys()
-        
-    # get importances
-    vals = [predictions[i] for i in target_order]
-    importances = [(i['predvars'], 
-                    i['importances'][0]) for i in vals]
-                
+        target_order = list(predictions.values())[0].keys()
+    N = len(target_order)
     f = plt.figure(figsize=(size, size))
-    axes = []
-    subplot_size = 1/len(importances)
-    for i, target in enumerate(target_order):
-        axes.append(f.add_axes([subplot_size*i*1.1, 0, subplot_size, subplot_size], projection='polar'))
-        importance = importances[i]
-        visualize_importance(importance, axes[-1],
-                     yticklabels=False, 
-                     xticklabels=True,
-                     label_size=size/4,
-                     color=[.5,.2,.7],
-                     axes_linewidth=size/20,
-                     label_scale=.23,
-                     show_sign=show_sign)
-        
-        
+    background_ax = f.add_axes([0,0,1,1])
+    polar_axes = []
+    subplot_size = 1/N
+    # get max r2
+    max_r2 = 0
+    for prediction in predictions.values():
+        vals = [prediction[i] for i in target_order]
+        max_r2 = max(max_r2, max([i['scores_cv'][0]['R2'] for i in vals]))
+    for row_i, (name, prediction) in enumerate(predictions.items()):
+        # get importances
+        vals = [prediction[i] for i in target_order]
+        importances = [(i['predvars'], 
+                        i['importances'][0]) for i in vals]
+        r2s = [i['scores_cv'][0]['R2'] for i in vals]
+        for i, target in enumerate(target_order):
+            xticklabels = False
+            if i==0:
+                xticklabels = True
+            polar_axes.append(f.add_axes([subplot_size*i*1.2, 
+                                    row_i*1.4*subplot_size, 
+                                    subplot_size, subplot_size], 
+                projection='polar'))
+            importance = importances[i]
+            visualize_importance(importance, polar_axes[-1],
+                         yticklabels=False, 
+                         xticklabels=xticklabels,
+                         label_size=size*1.5,
+                         color=palette[int(r2s[i]/max_r2*len(palette))-1],
+                         axes_linewidth=size/20,
+                         label_scale=.25,
+                         show_sign=show_sign)
+            polar_axes[-1].text(.5, -.2, 'R2: ' + format_num(r2s[i]), 
+                      zorder=5, fontsize=size*1.5,
+                      fontweight='bold',
+                      ha='center',
+                      transform=polar_axes[-1].transAxes)
+            # change axis color
+            polar_axes[-1].grid(color=[.6,.6,.6])
+            polar_axes[-1].set_facecolor((0.91, 0.91, 0.94, 1.0))
+    # add column labels
+    for i, label in enumerate(target_order):
+        pos = polar_axes[i-3].get_position().bounds
+        x_pos = pos[0]+pos[2]*.5
+        y_pos = pos[1]+pos[3]
+        background_ax.text(x_pos, y_pos+.05, 
+                           '\n'.join(label.split()), 
+                           fontsize=size*2,
+                           fontweight='bold',
+                           ha='center')
+    # add row labels
+    for i, key in enumerate(predictions.keys()):
+        pos = polar_axes[i*N].get_position().bounds
+        x_pos = pos[0]
+        y_pos = pos[1]+pos[3]*.5
+        background_ax.text(x_pos-.1, y_pos, 
+                           ' '.join(key.title().split('_')), 
+                           fontsize=size*2,
+                           fontweight='bold',
+                           va='center',
+                           rotation=90)
+    # make background ax invisible
+    background_ax.tick_params(bottom=False, left=False,
+                              labelbottom=False, labelleft=False)
+    # add colorbar
+    if colorbar == True:
+        # get x position of center plots
+        if N%2==1:
+            pos = polar_axes[N//2].get_position().bounds
+            x_pos = pos[0]+pos[2]*.5
+        else:
+            pos1 = polar_axes[N//2-1].get_position().bounds
+            pos2 = polar_axes[N//2].get_position().bounds
+            x_pos = (pos2[0]-(pos1[0]+pos[2]))*2+pos[0]+pos[2]
+    
+        color_ax = f.add_axes([x_pos-.3,-.2, .6, .025])
+        cbar = mpl.colorbar.ColorbarBase(ax=color_ax, cmap=ListedColormap(palette),
+                                  orientation='horizontal')
+        cbar.set_ticks([0,1])
+        cbar.set_ticklabels([0, format_num(max_r2)])
+        color_ax.tick_params(labelsize=size)
+        cbar.set_label('R2', fontsize=size*1.5)
+    for key, spine in background_ax.spines.items():
+        spine.set_visible(False)
+    if filename is not None:
+        save_figure(f, filename, {'bbox_inches': 'tight', 'dpi': dpi})
+        plt.close()
+    else:
+        return f
 
         
 def plot_prediction(predictions, shuffled_predictions, 
