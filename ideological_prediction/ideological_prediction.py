@@ -5,7 +5,9 @@ import warnings
 warnings.warn = warn
 
 from fancyimpute import SoftImpute
+import json
 from os import makedirs, path
+import numpy as np
 import pandas as pd
 import pickle
 
@@ -21,7 +23,7 @@ makedirs(results_dir, exist_ok=True)
 
 # run prediction
 target_name = 'ideology'
-shuffle_reps = 2
+shuffle_reps = 10
 
 # define predictors
 survey_scores = results['survey'].EFA.get_scores()
@@ -108,3 +110,35 @@ data = {'all_predictions': predictions,
 # save all results
 pickle.dump(data, 
             open(path.join(results_dir, 'ideo_predictions.pkl'), 'wb'))
+
+# save results in easier-to-use format
+simplified = {}
+simplified_importances = {}
+predictor_importances = {}
+for p in predictors.keys():
+    simplified[p] = {}
+    predictor_importances[p] = {}
+    for t in targets.keys():
+        tmp = predictions[(p,t)]
+        tmp_scores = {'CV_'+k:tmp[k]['scores_cv'][0]['R2'] for k in tmp.keys()}
+        tmp_scores.update({'insample_'+k:tmp[k]['scores_insample'][0]['R2'] for k in tmp.keys()})
+        simplified[p].update(tmp_scores)
+        # get importances
+        for k in tmp.keys():
+            importances = tmp[k]['importances'][0]
+            predvars = tmp[k]['predvars']
+            non_zero = np.where(importances)[0]
+            predictor_importances[p][k] = list(zip([predvars[i] for i in non_zero],
+                                           importances[non_zero]))
+        simplified_importances['%s:%s' % (p,t)] = predictor_importances
+        
+        
+simplified=pd.DataFrame(simplified)
+simplified.to_csv(path.join(results_dir, 'predictions_R2.csv'))
+json.dump(simplified_importances, open(path.join(results_dir, 'predictor_importances.json'), 'w'))
+
+
+
+
+
+

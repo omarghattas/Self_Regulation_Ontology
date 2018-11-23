@@ -14,12 +14,17 @@ shortened_factors = get_short_names()
 def visualize_importance(importance, ax, xticklabels=True, yticklabels=True, 
                          axes_linewidth=None, label_size=10,
                          label_scale=0, title=None, 
-                         ymax=None, color=colors[1],
+                         ymax=None, color=colors[1], outline_color=None,
                          show_sign=True):
     importance_vars = importance[0]
     importance_vars = [shortened_factors.get(v,v) for v in importance_vars]
     if importance[1] is not None:
         importance_vals = [abs(i) for i in importance[1]]
+        if outline_color is not None:
+            plot_loadings(ax, importance_vals, kind='line', offset=.5, 
+                          colors=outline_color, plot_kws={'alpha': 1, 
+                                                     'linewidth': label_size/2})
+    
         plot_loadings(ax, importance_vals, kind='line', offset=.5, 
                       colors=[color], plot_kws={'alpha': 1, 
                                                  'linewidth': label_size/4})
@@ -78,6 +83,7 @@ def visualize_importance(importance, ax, xticklabels=True, yticklabels=True,
             replace_dict = {i:'' for i in labels[::2]}
             labels = [replace_dict.get(i, i) for i in labels]
             ax.set_yticklabels(labels)
+    """
     # optional to shade to show sign of beta value
     if show_sign:
         data_coords = ax.lines[0].get_data()
@@ -91,15 +97,13 @@ def visualize_importance(importance, ax, xticklabels=True, yticklabels=True,
             ax.axvspan(xmin=center-gap/2, xmax=center+gap/2,
                        ymin=ylim[0], ymax=ylim[1]*50,
                        facecolor='r', alpha=.1)
-
+    """
 
 def polar_plots(predictions, target_order=None, show_sign=True, 
                 colorbar=True, size=5, dpi=300, filename=None):
     # set up color styling
-    if show_sign:
-        palette = sns.dark_palette("blue", 100)
-    else:
-        palette = sns.cubehelix_palette(100)
+    palette = sns.dark_palette("blue", 100)
+    #palette = sns.cubehelix_palette(100)
     # plot
     if target_order is None:
         target_order = list(predictions.values())[0].keys()
@@ -120,10 +124,8 @@ def polar_plots(predictions, target_order=None, show_sign=True,
                         i['importances'][0]) for i in vals]
         r2s = [i['scores_cv'][0]['R2'] for i in vals]
         for i, target in enumerate(target_order):
-            xticklabels = False
-            if i==0:
-                xticklabels = True
-            polar_axes.append(f.add_axes([subplot_size*i*1.2, 
+            xticklabels = True
+            polar_axes.append(f.add_axes([subplot_size*i*1.3, 
                                     row_i*1.4*subplot_size, 
                                     subplot_size, subplot_size], 
                 projection='polar'))
@@ -133,6 +135,7 @@ def polar_plots(predictions, target_order=None, show_sign=True,
                          xticklabels=xticklabels,
                          label_size=size*1.5,
                          color=palette[int(r2s[i]/max_r2*len(palette))-1],
+                         outline_color=None,
                          axes_linewidth=size/20,
                          label_scale=.25,
                          show_sign=show_sign)
