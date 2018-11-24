@@ -1,7 +1,14 @@
+# data directories
 Data/Local
 Data/Retest_*/Local
 Data/Retest_*/batch_output
-data_preparation/old
+
+# Results directories
+*.pkl
+*.pdf
+*.png
+
+# misc
 .Rhistory
 .fuse*
 *.pyl
@@ -10,10 +17,7 @@ data_preparation/old
 *.nb.html
 *.egg-info
 .spyproject/
-*.pkl
 !example_data_post.pkl
-*.pdf
-*.png
 *.Rdata
 .eggs
 internal_settings.json

@@ -23,7 +23,7 @@ makedirs(results_dir, exist_ok=True)
 
 # run prediction
 target_name = 'ideology'
-shuffle_reps = 10
+shuffle_reps = 1000
 
 # define predictors
 survey_scores = results['survey'].EFA.get_scores()
@@ -128,14 +128,16 @@ for p in predictors.keys():
             importances = tmp[k]['importances'][0]
             predvars = tmp[k]['predvars']
             non_zero = np.where(importances)[0]
-            predictor_importances[p][k] = list(zip([predvars[i] for i in non_zero],
+            zipped = list(zip([predvars[i] for i in non_zero],
                                            importances[non_zero]))
-        simplified_importances['%s:%s' % (p,t)] = predictor_importances
+            predictor_importances[p][k] = sorted(zipped, 
+                                                 key = lambda x: abs(x[1]), 
+                                                 reverse=True)
         
         
 simplified=pd.DataFrame(simplified)
 simplified.to_csv(path.join(results_dir, 'predictions_R2.csv'))
-json.dump(simplified_importances, open(path.join(results_dir, 'predictor_importances.json'), 'w'))
+json.dump(predictor_importances, open(path.join(results_dir, 'predictor_importances.json'), 'w'))
 
 
 
