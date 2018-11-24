@@ -117,6 +117,7 @@ simplified_importances = {}
 predictor_importances = {}
 for p in predictors.keys():
     simplified[p] = {}
+    simplified
     predictor_importances[p] = {}
     for t in targets.keys():
         tmp = predictions[(p,t)]
@@ -133,7 +134,10 @@ for p in predictors.keys():
             predictor_importances[p][k] = sorted(zipped, 
                                                  key = lambda x: abs(x[1]), 
                                                  reverse=True)
-        
+simplified['Target_Cat'] = {}
+for t,vals in targets.items():
+    simplified['Target_Cat'].update({'CV_' + c:t for c in vals.columns})
+    simplified['Target_Cat'].update({'insample_' + c:t for c in vals.columns})
         
 simplified=pd.DataFrame(simplified)
 simplified.to_csv(path.join(results_dir, 'predictions_R2.csv'))

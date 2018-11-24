@@ -102,7 +102,7 @@ def visualize_importance(importance, ax, xticklabels=True, yticklabels=True,
 def polar_plots(predictions, target_order=None, show_sign=True, 
                 colorbar=True, size=5, dpi=300, filename=None):
     # set up color styling
-    palette = sns.dark_palette("blue", 100)
+    palette = sns.color_palette('Blues_d',100)
     #palette = sns.cubehelix_palette(100)
     # plot
     if target_order is None:
@@ -135,7 +135,7 @@ def polar_plots(predictions, target_order=None, show_sign=True,
                          xticklabels=xticklabels,
                          label_size=size*1.5,
                          color=palette[int(r2s[i]/max_r2*len(palette))-1],
-                         outline_color=None,
+                         outline_color='k',
                          axes_linewidth=size/20,
                          label_scale=.25,
                          show_sign=show_sign)
@@ -342,3 +342,31 @@ def plot_outcome_ontological_similarity(predictions, size=4.6,
     if filename is not None:
         save_figure(f, filename, {'bbox_inches': 'tight', 'dpi': dpi})
         plt.close()
+        
+def plot_predictors_comparison(R2_df, size=2, dpi=300, filename=None):
+    CV_df = R2_df.filter(regex='CV', axis=0)
+    CV_corr = CV_df.corr(method='spearman')
+    
+    max_R2 = round(CV_df.max(numeric_only=True).max(),1)
+    size=2
+    grid = sns.pairplot(CV_df, hue='Target_Cat', height=size)
+    for i, row in enumerate(grid.axes):
+        for j, ax in enumerate(row):
+            ax.set_xlim([0,max_R2])
+            ax.set_ylim([0,max_R2])
+            xlim = ax.get_xlim()
+            ylim = ax.get_ylim()
+            ax.plot(xlim, ylim, ls=":", c=".5", zorder=-1)
+            ax.set_xlim(xlim); ax.set_ylim(ylim)
+            if j<i:
+                ax.text(.5, 1, r'$\rho$ = %s' % format_num(CV_corr.iloc[i,j]),
+                        ha='center',
+                        fontsize=size*7,
+                        fontweight='bold',
+                        transform=ax.transAxes)
+            if j>i:
+                ax.set_visible(False)
+    if filename is not None:
+        save_figure(grid.fig, filename)
+    else:
+        return grid
