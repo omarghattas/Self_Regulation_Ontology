@@ -508,8 +508,6 @@ class BehavPredict:
     
     def get_output(self, vars):
         h='%08x'%random.getrandbits(32)
-<<<<<<< HEAD
-=======
         if type(self.classifier) == str:
             classifier_name = self.classifier
         else:
@@ -528,7 +526,6 @@ class BehavPredict:
             os.makedirs(self.output_dir, exist_ok=True)
         if self.verbose:
             print('saving to',os.path.join(self.output_dir,outfile))
->>>>>>> master
         if not isinstance(vars,list):
             vars=[vars]
 

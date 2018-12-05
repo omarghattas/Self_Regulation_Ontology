@@ -252,8 +252,9 @@ for subset in subsets:
             results.run_prediction(classifier=classifier, verbose=verbose)
             results.run_prediction(classifier=classifier, shuffle=shuffle_repeats, verbose=verbose) # shuffled
             # predict demographic changes
-            results.run_change_prediction(classifier=classifier, verbose=verbose)
-            results.run_change_prediction(classifier=classifier, shuffle=shuffle_repeats, verbose=verbose) # shuffled
+            if run_change:
+                results.run_change_prediction(classifier=classifier, verbose=verbose)
+                results.run_change_prediction(classifier=classifier, shuffle=shuffle_repeats, verbose=verbose) # shuffled
     # ***************************** saving ****************************************
     prediction_dir = path.join(results.get_output_dir(), 'prediction_outputs')
     new_dir = path.join(path.dirname(results.get_output_dir()), 'prediction_outputs')
@@ -270,6 +271,7 @@ for subset in subsets:
                 for filey in prediction_files:
                     filename = '_'.join(path.basename(filey).split('_')[:-1])
                     copyfile(filey, path.join(new_dir, '%s_%s.pkl' % (name, filename)))
+
 
     # ****************************************************************************
     # Plotting
@@ -328,41 +330,6 @@ for subset in subsets:
         
         # Plot prediction
         if results.load_prediction_object() is not None:
-<<<<<<< HEAD
-            target_order = results.DA.reorder_factors(results.DA.get_loading()).columns
-            change_target_order = [i + ' Change' for i in target_order]
-            for classifier in classifiers:
-                for EFA in [True, False]:
-                    print("Plotting Prediction, classifier: %s, EFA: %s" % (classifier, EFA))
-                    plot_results_prediction(results, target_order=target_order, EFA=EFA, 
-                                            classifier=classifier, plot_dir=prediction_plot_dir,
-                                            dpi=dpi,
-                                            ext=ext,
-                                            size=size)
-                    plot_prediction_scatter(results, target_order=target_order, EFA=EFA, 
-                                    classifier=classifier, plot_dir=prediction_plot_dir,
-                                    dpi=dpi,
-                                    ext=ext,
-                                    size=size)
-                    """
-                    print("Plotting Change Prediction, classifier: %s, EFA: %s" % (classifier, EFA))
-                    try:
-                        plot_results_prediction(results, target_order=change_target_order, 
-                                                EFA=EFA, change=True,
-                                                classifier=classifier, plot_dir=prediction_plot_dir,
-                                                dpi=dpi,
-                                                ext=ext,
-                                                size=size)
-                        plot_prediction_scatter(results, target_order=change_target_order, 
-                                        EFA=EFA, change=True,
-                                        classifier=classifier, plot_dir=prediction_plot_dir,
-                                        dpi=dpi,
-                                        ext=ext,
-                                        size=size)
-                    except AssertionError:
-                        print('No shuffled data was found for %s change predictions, EFA: %s' % (name, EFA))
-                    """
-=======
             for rotate in ['oblimin', 'varimax']:
                 rotate_plot_dir = path.join(prediction_plot_dir, rotate)
                 target_order = results.DA.reorder_factors(results.DA.get_loading()).columns
@@ -415,7 +382,6 @@ for subset in subsets:
                 plot_factor_fingerprint(results, change=True, rotate=rotate,
                                         size=size, ext=ext, dpi=dpi, 
                                         plot_dir=rotate_plot_dir)
->>>>>>> master
             plot_prediction_comparison(results, change=False, size=size, ext=ext,
                                        dpi=dpi, plot_dir=prediction_plot_dir)
             plot_prediction_comparison(results, change=True, size=size, ext=ext, 
@@ -441,15 +407,8 @@ if group_analysis == True:
                          shuffle=False, classifier='ridge',
                          include_raw_demographics=False, rotate='oblimin',
                          verbose=False)
-<<<<<<< HEAD
-    output_loc = path.dirname(all_results['task'].get_output_dir())
-    prediction_loc = path.join(output_loc, 'cross_prediction.pkl')
-    if not path.exists(prediction_loc):
-        run_cross_prediction(all_results, save=True)
-=======
     run_cross_prediction(all_results)
     a=subprocess.Popen('python gephi_graph_plot.py', shell=True)
->>>>>>> master
 
 if group_plot == True:
     if verbose:
