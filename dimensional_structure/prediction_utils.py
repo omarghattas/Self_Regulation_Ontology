@@ -29,15 +29,7 @@ def run_prediction(predictors, targets, output_base='',
                       freq_threshold=freq_threshold)
     if binarize:
         bp.binarize_ZI_demog_vars()
-<<<<<<< HEAD
     vars_to_test=[v for v in bp.targetdata.columns if not v in bp.skip_vars]
-=======
-<<<<<<< HEAD
-    vars_to_test=[v for v in bp.demogdata.columns if not v in bp.skip_vars]
-=======
-    vars_to_test=[v for v in bp.targetdata.columns if not v in bp.skip_vars]
->>>>>>> master
->>>>>>> 060988d30337099cc2fce709fd932067baf8c60d
     for v in vars_to_test:
         # run regression into non-null number is found. Should only be run once!
         # but occasionally a nan is returned for some reason
