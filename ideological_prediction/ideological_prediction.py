@@ -155,8 +155,8 @@ for t,vals in targets.items():
     simplified['Target_Cat'].update({'insample_' + c:t for c in vals.columns})
         
 simplified=pd.DataFrame(simplified)
-simplified.to_csv(path.join(results_dir, '
-                            predictions_%s_R2.csv' % EFA_rotation))
+simplified.to_csv(path.join(results_dir, 
+                            'predictions_%s_R2.csv' % EFA_rotation))
 json.dump(predictor_importances, 
           open(path.join(results_dir, 
                          'predictor_importances_%s.json' % EFA_rotation), 'w'))
