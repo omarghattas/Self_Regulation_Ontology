@@ -22,21 +22,21 @@ from selfregulation.utils.r_to_py_utils import get_attr, missForest, psychFA
 from selfregulation.utils.utils import get_behav_data
 
     
-def calc_EFA_retest(results, verbose=True):
+def calc_EFA_retest(results, rotate='oblimin', verbose=True):
     name = results.ID.split('_')[0].title()    
     retest_data_raw = get_behav_data(dataset=results.dataset.replace('Complete','Retest'),
                                      file='meaningful_variables.csv')
     shared_ids = set(retest_data_raw.index) & set(results.data.index)
     retest_data_raw = retest_data_raw.loc[shared_ids, :]
-    retest_scores = transfer_scores(retest_data_raw, results)
+    retest_scores = transfer_scores(retest_data_raw, results, rotate=rotate)
     retest_scores.columns = [i+' Retest' for i in retest_scores.columns]
     # scale and perform the factor score transformation
     EFA = results.EFA
-    c = EFA.results['num_factors']
-    ref_scores = EFA.get_scores(c=c).loc[retest_data_raw.index, :]
+    c = EFA.get_c()
+    ref_scores = EFA.get_scores(c=c, rotate=rotate).loc[retest_data_raw.index, :]
 
     # reorder scores
-    reorder_vec = EFA.get_factor_reorder(c)
+    reorder_vec = EFA.get_factor_reorder(c, rotate=rotate)
     ref_scores = ref_scores.iloc[:, reorder_vec]
     retest_scores = retest_scores.iloc[:, reorder_vec]
     combined = pd.concat([ref_scores, retest_scores], axis=1)
@@ -49,13 +49,13 @@ def calc_EFA_retest(results, verbose=True):
             print('%s: %s' % (factor, format_num(num)))
     return combined, cross_diag
 
-def calc_EFA_retest_held_out(results, verbose=True):
+def calc_EFA_retest_held_out(results, rotate='oblimin', verbose=True):
     name = results.ID.split('_')[0].title()
     orig_data = results.data
     positive_skewed = [i.replace('.logTr', '') for i in orig_data.columns if ".logTr" in i]
     negative_skewed = [i.replace('.ReflogTr', '') for i in orig_data.columns if ".ReflogTr" in i]
     DVs = [i.replace('.logTr','').replace('.ReflogTr','') for i in orig_data.columns]
-    orig_scores = results.EFA.get_scores()
+    orig_scores = results.EFA.get_scores(rotate=rotate)
     
     # load and clean retest data exactly like original data
     data_raw = get_behav_data(dataset=results.dataset,
@@ -80,7 +80,7 @@ def calc_EFA_retest_held_out(results, verbose=True):
     # get subjects not in the retest set
     ind_data = orig_data.loc[set(orig_data.index)-shared_ids]
     fa, output = psychFA(ind_data, results.EFA.results['num_factors'], 
-                         method='ml', rotate='oblimin')
+                         method='ml', rotate=rotate)
     weights = get_attr(fa, 'weights')
     scores = {}
     for name, data in imputed_data.items():
@@ -104,8 +104,10 @@ def plot_EFA_retest(combined, size=4.6, dpi=300,
     ax = fig.add_axes([.1, .1, .8, .8])
     cbar_ax = fig.add_axes([.92, .15, .04, .7])
     sns.heatmap(corr, square=True, ax=ax, cbar_ax=cbar_ax,
+                vmin=-1, vmax=1,
+                cmap=sns.diverging_palette(220,15,n=100,as_cmap=True),
                 cbar_kws={'orientation': 'vertical',
-                          'ticks': [-max_val, 0, max_val]}); 
+                          'ticks': [-1, 0, 1]}); 
     ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
     ax.set_yticklabels(ax.get_yticklabels(), rotation=0)
     ax.tick_params(labelsize=size/len(corr)*40)
@@ -200,8 +202,9 @@ def plot_cross_EFA_change(all_results, size=4.6, dpi=300,
                     {'bbox_inches': 'tight', 'dpi': dpi})
         plt.close()
     
-def plot_cross_EFA_retest(all_results, size=4.6, dpi=300, EFA_retest_fun=None,
-                          annot_heatmap=False, ext='png', plot_dir=None):
+def plot_cross_EFA_retest(all_results, rotate='oblimin', size=4.6, dpi=300, 
+                          EFA_retest_fun=None, annot_heatmap=False, 
+                          ext='png', plot_dir=None):
     if EFA_retest_fun is None:
         EFA_retest_fun = calc_EFA_retest
     colors = {'survey': sns.color_palette('Reds_d',3)[0], 
@@ -217,7 +220,7 @@ def plot_cross_EFA_retest(all_results, size=4.6, dpi=300, EFA_retest_fun=None,
     cbar_ax = fig.add_axes([.2, .03, .2, .02])
     # get fontsize for factor labels
     for i, (name,results) in enumerate(all_results.items()):
-        combined, *the_rest = EFA_retest_fun(results)
+        combined, *the_rest = EFA_retest_fun(results, rotate=rotate)
         color = list(colors.get(name, [.2,.2,.2])) + [.8]
         ax2 = axes[i*2]; ax = axes[i*2+num_rows//2]
         plot_EFA_change(combined=combined,  color_on=color, ax=ax, size=size/2)
@@ -236,6 +239,7 @@ def plot_cross_EFA_retest(all_results, size=4.6, dpi=300, EFA_retest_fun=None,
                         cmap=sns.diverging_palette(220,15,n=100,as_cmap=True),
                         cbar_kws={'orientation': 'horizontal',
                                   'ticks': [-1, 0, 1]},
+                        cmap=sns.diverging_palette(220,15,n=100,as_cmap=True),
                         annot=annot,
                         annot_kws={'fontsize': annot_fontsize}); 
             
@@ -267,7 +271,10 @@ def plot_cross_EFA_retest(all_results, size=4.6, dpi=300, EFA_retest_fun=None,
         [i.set_linewidth(size*.1) for i in ax2.spines.values()]
         
     if plot_dir is not None:
-        save_figure(fig, path.join(plot_dir, 'EFA_test_retest.%s' % ext),
+        filename = 'EFA_test_retest'
+        if annot_heatmap:
+            filename += '_annot'
+        save_figure(fig, path.join(plot_dir, rotate, '%s.%s' % (filename, ext)),
                     {'bbox_inches': 'tight', 'dpi': dpi})
         plt.close()
     

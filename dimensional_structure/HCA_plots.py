@@ -215,7 +215,7 @@ def plot_subbranch(cluster_i, tree, loading, cluster_sizes, title=None,
     else:
         return fig
     
-def plot_subbranches(results, c=None,  rotate='oblimin', inp=None, 
+def plot_subbranches(results, c=None,  rotate='oblimin', EFA_clustering=True,
                      cluster_range=None, absolute_loading=False,
                      size=2.3, dpi=300, ext='png', plot_dir=None):
     """ Plots HCA results as dendrogram with loadings underneath
@@ -234,6 +234,10 @@ def plot_subbranches(results, c=None,  rotate='oblimin', inp=None,
     EFA = results.EFA
     loading = EFA.reorder_factors(EFA.get_loading(c, rotate=rotate))
     loading.index = format_variable_names(loading.index)
+    if EFA_clustering:
+        inp = 'EFA%s_%s' % (c, rotate)
+    else:
+        inp = 'data'
     clustering = HCA.results[inp]
     name = inp
     
@@ -259,21 +263,56 @@ def plot_subbranches(results, c=None,  rotate='oblimin', inp=None,
     plot_loc = None
     if cluster_range is None:
         cluster_range = range(len(cluster_labels))
+    # get cluster titles
+    cluster_names = clustering.get('cluster_names', None)
+    if cluster_names:
+        cluster_names = [cluster_names[i] for i in cluster_range]
+    else:
+        cluster_names = [None] * len(cluster_range)
+    # titles = 
     figs = []
     for cluster_i in cluster_range:
         if plot_dir:
             filey = 'cluster_%s.%s' % (str(cluster_i).zfill(2), ext)
             plot_loc = path.join(plot_dir, function_directory, filey)
         fig = plot_subbranch(cluster_i, tree, ordered_loading, cluster_sizes,
+                             title=cluster_names.pop(), 
                              size=size, plot_loc=plot_loc)
         figs.append(fig)
     return figs
-                           
+                
+def plot_results_dendrogram(results, c=None, rotate='oblimin', 
+                            EFA_clustering=True, title=None, size=4.6,  
+                            ext='png', plot_dir=None,
+                            **kwargs):
+    subset = results.ID.split('_')[0]
+    HCA = results.HCA
+    EFA = results.EFA     
+    loading = EFA.reorder_factors(EFA.get_loading(c, rotate=rotate))
+    if EFA_clustering:
+        inp = 'EFA%s_%s' % (c, rotate)
+    else:
+        inp = 'data'
+    clustering = HCA.results[inp]
+    name = inp
+    if title is None:
+        title = subset.title() + " Dependent Variable Structure"
+    if plot_dir:
+        filename =  path.join(plot_dir, 'dendrogram_%s.%s' % (name, ext))
+    else:
+        filename = None
 
-def plot_dendrogram(results, c=None,  rotate='oblimin', inp=None, titles=None, 
+    plot_dendrogram(loading, clustering, 
+                    title=title, 
+                    size=size, 
+                    filename=filename,
+                    **kwargs)
+    
+    
+def plot_dendrogram(loading, clustering, title=None, 
                     labels=None, var_labels=False, break_lines=True, 
-                    absolute_loading=False,  size=4.6,  dpi=300, ext='png', 
-                    plot_dir=None):
+                    absolute_loading=False,  size=4.6,  dpi=300, 
+                    filename=None):
     """ Plots HCA results as dendrogram with loadings underneath
     
     Args:
@@ -284,17 +323,9 @@ def plot_dendrogram(results, c=None,  rotate='oblimin', inp=None, titles=None,
         titles: list of titles. Should correspond to number of clusters in
                 results object if "inp" is not set. Otherwise should be a list of length 1.
     """
-    subset = results.ID.split('_')[0]
-    HCA = results.HCA
-    EFA = results.EFA
-    loading = EFA.reorder_factors(EFA.get_loading(c, rotate=rotate))
-    clustering = HCA.results[inp]
-    name = inp
 
-    if titles is None:
-        title = subset.title() + " Dependent Variable Structure"
-    elif titles != False:
-        title=titles.pop(0)
+
+    c = loading.shape[1]
     # extract cluster vars
     link = clustering['linkage']
     DVs = clustering['clustered_df'].columns
@@ -343,9 +374,8 @@ def plot_dendrogram(results, c=None,  rotate='oblimin', inp=None, titles=None,
         ax2 = fig.add_axes(heatmap_size)
         cbar_ax = fig.add_axes(cbar_size)
         max_val = np.max(abs(loading.values))
-        # if max_val is high, just make it 1
-        if max_val > .9:
-            max_val = 1
+        # bring to closest .25
+        max_val = ceil(max_val*4)/4
         sns.heatmap(ordered_loading, ax=ax2, 
                     cbar=True, cbar_ax=cbar_ax,
                     yticklabels=True,
@@ -417,13 +447,12 @@ def plot_dendrogram(results, c=None,  rotate='oblimin', inp=None, titles=None,
                 ax3.spines['left'].set_visible(False)
             
         # add title
-        if titles != False:
+        if title:
             ax1.set_title(title, fontsize=size*2, y=1.05)
             
         
-    if plot_dir is not None:
-        save_figure(fig, path.join(plot_dir, 
-                                  'dendrogram_%s.%s' % (name, ext)),
+    if filename is not None:
+        save_figure(fig, filename,
                     {'bbox_inches': 'tight', 'dpi': dpi})
         plt.close()
     
@@ -484,7 +513,7 @@ def MDS_visualization(results, c, rotate='oblimin', plot_dir=None,
     HCA = results.HCA
     EFA = results.EFA
     
-    cluster_loadings = HCA.get_cluster_loading(EFA, 'data', c)
+    cluster_loadings = HCA.get_cluster_loading(EFA, rotate=rotate)
     cluster_loadings_mat = np.vstack([i[1] for i in cluster_loadings])
     EFA_loading = abs(EFA.get_loading(c, rotate=rotate))
     EFA_loading_mat = EFA_loading.values
@@ -572,7 +601,7 @@ def visualize_importance(importance, ax, xticklabels=True,
     if legend:
         ax.legend(loc='upper center', bbox_to_anchor=(.5,-.15))
         
-def plot_cluster_factors(results, c, inp='data', ext='png', plot_dir=None):
+def plot_cluster_factors(results, c, rotate='oblimin',  ext='png', plot_dir=None):
     """
     Args:
         EFA: EFA_Analysis object
@@ -584,7 +613,7 @@ def plot_cluster_factors(results, c, inp='data', ext='png', plot_dir=None):
     HCA = results.HCA
     EFA = results.EFA
     
-    cluster_loadings = HCA.get_cluster_loading(EFA, inp, c)
+    cluster_loadings = HCA.get_cluster_loading(EFA, rotate=rotate)
     max_loading = max([max(abs(i[1])) for i in cluster_loadings])
     # plot
     colors = sns.hls_palette(len(cluster_loadings))
@@ -610,7 +639,7 @@ def plot_cluster_factors(results, c, inp='data', ext='png', plot_dir=None):
         axes[j].set_visible(False)
     plt.subplots_adjust(hspace=.5, wspace=.5)
     
-    filename = 'polar_factors_EFA%s_inp-%s.%s' % (c, inp, ext)
+    filename = 'polar_factors_EFA%s_%s.%s' % (c, rotate, ext)
     if plot_dir is not None:
         save_figure(f, path.join(plot_dir, filename),
                     {'bbox_inches': 'tight'})
@@ -769,25 +798,28 @@ def plot_cluster_sankey(results):
         print("Plotly wasn't found, can't plot!")
     
 
-def plot_HCA(results, plot_dir=None, size=10, dpi=300, verbose=False, ext='png'):
-    c = results.EFA.results['num_factors']
+def plot_HCA(results, plot_dir, rotate='oblimin',  size=10, dpi=300, verbose=False, ext='png'):
+    plot_rotate_dir = path.join(plot_dir, rotate)
+    c = results.EFA.get_c()
     # plots, woo
 #    if verbose: print("Plotting dendrogram heatmaps")
 #    plot_clusterings(results, inp='data', plot_dir=plot_dir, verbose=verbose, ext=ext)
 #    plot_clusterings(results, inp='EFA%s' % c, plot_dir=plot_dir, verbose=verbose, ext=ext)
     if verbose: print("Plotting dendrograms")
-    plot_dendrogram(results, c, size=size, inp='data', var_labels=False,
-                    titles=False,  plot_dir=plot_dir, ext=ext, dpi=dpi)
-    plot_dendrogram(results, c, inp='EFA%s_oblimin' % c, var_labels=False,
-                    titles=False, plot_dir=plot_dir, ext=ext, dpi=dpi)
+    plot_results_dendrogram(results, c, rotate=rotate, EFA_clustering=False,
+                        var_labels=False, title=False,  plot_dir=plot_dir, 
+                        size=size, ext=ext, dpi=dpi)
+    plot_results_dendrogram(results, c, rotate=rotate, EFA_clustering=True,
+                        var_labels=False, title=False, plot_dir=plot_rotate_dir, 
+                        size=size, ext=ext, dpi=dpi)
     if verbose: print("Plotting dendrogram subbranches")
-    plot_subbranches(results, c,  size=size/2, inp='data', 
-                     plot_dir=plot_dir, ext=ext, dpi=dpi)
-    plot_subbranches(results, c,  size=size/2, inp='EFA%s_oblimin' % c, 
-                     plot_dir=plot_dir, ext=ext, dpi=dpi)
+    plot_subbranches(results, c,  rotate=rotate,  EFA_clustering=False,
+                     size=size/2, plot_dir=plot_dir, ext=ext, dpi=dpi)
+    plot_subbranches(results, c,  rotate=rotate,  EFA_clustering=True,
+                     size=size/2, plot_dir=plot_rotate_dir, ext=ext, dpi=dpi)
     if verbose: print("Plotting silhouette analysis")
-    plot_silhouette(results, inp='EFA%s_oblimin' % c, size=size,
-                    plot_dir=plot_dir, ext=ext, dpi=dpi)
+    plot_silhouette(results, inp='EFA%s_%s' % (c, rotate), size=size,
+                    plot_dir=plot_rotate_dir, ext=ext, dpi=dpi)
 #    if verbose: print("Plotting clustering similarity")
 #    plot_clustering_similarity(results, plot_dir=plot_dir, verbose=verbose, ext=ext)
 #    if verbose: print("Plotting cluster polar plots")
@@ -795,7 +827,7 @@ def plot_HCA(results, plot_dir=None, size=10, dpi=300, verbose=False, ext='png')
 #    plot_cluster_factors(results, c, inp='EFA%s' % c, plot_dir=plot_dir, ext=ext)
     if verbose: print("Plotting MDS space")
     for metric in ['abs_correlation']:
-        MDS_visualization(results, c, plot_dir=plot_dir,
+        MDS_visualization(results, c, rotate=rotate, plot_dir=plot_rotate_dir,
                           dist_metric=metric, ext=ext)
 
 
