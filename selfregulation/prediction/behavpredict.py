@@ -507,32 +507,10 @@ class BehavPredict:
         return scores
     
     def get_output(self, vars):
-        h='%08x'%random.getrandbits(32)
-        if type(self.classifier) == str:
-            classifier_name = self.classifier
-        else:
-            try:
-                classifier_name = self.classifier.__name__
-            except AttributeError:
-                classifier_name = 'Unknown'
-        if self.outfile is None:
-            outfile='prediction_%s_%s_%s%s%s.pkl' % (classifier_name,
-                                                     shuffle_flag,
-                                                     h)
-        else:
-            outfile = self.outfile.rstrip('.pkl')
-            outfile = outfile + '_%s_%s%s.pkl' % (classifier_name, shuffle_flag, h)
-        if not os.path.exists(self.output_dir):
-            os.makedirs(self.output_dir, exist_ok=True)
-        if self.verbose:
-            print('saving to',os.path.join(self.output_dir,outfile))
-        if not isinstance(vars,list):
-            vars=[vars]
-
         info={}
         self.finished_at=datetime.datetime.now()
         info['info']=self.dump()
-        info['info']['hash']=h
+        info['info']['hash']='%08x'%random.getrandbits(32)
         info['data']={}
         for v in vars:
             info['data'][v]={}
@@ -555,8 +533,8 @@ class BehavPredict:
         return info
             
     def write_data(self, vars):
+        info = self.get_output(vars)
         shuffle_flag='shuffle_' if self.shuffle else ''
-        h='%08x'%random.getrandbits(32)
         if type(self.classifier) == str:
             classifier_name = self.classifier
         else:
@@ -568,16 +546,14 @@ class BehavPredict:
             outfile='prediction_%s_%s_%s%s%s.pkl' % (self.predictor_set,
                                                      classifier_name,
                                                      shuffle_flag,
-                                                     h)
+                                                     info['info']['hash'])
         else:
             outfile = self.outfile.rstrip('.pkl')
-            outfile = outfile + '_%s_%s%s.pkl' % (classifier_name, shuffle_flag, h)
+            outfile = outfile + '_%s_%s%s.pkl' % (classifier_name, shuffle_flag, info['info']['hash'])
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir, exist_ok=True)
         if self.verbose:
             print('saving to',os.path.join(self.output_dir,outfile))
-            
-        info = self.get_output(vars)
         pickle.dump(info,
                     open(os.path.join(self.output_dir,outfile),'wb'))
         
