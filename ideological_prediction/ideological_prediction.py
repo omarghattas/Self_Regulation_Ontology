@@ -164,7 +164,7 @@ for p in data['predictors'].keys():
         shuffled_scores = {}
         for k in tmp.keys():
             shuffled_score = data['all_shuffled_predictions'][(p,t)][k]['scores_cv']
-            shuffled_95th = np.percentile( [i['R2'] for i in shuffled_scores], 95)
+            shuffled_95th = np.percentile( [i['R2'] for i in shuffled_score], 95)
             shuffled_scores['shuffled95_' + k] = shuffled_95th
         simplified[p].update(shuffled_scores)
         # get importances
