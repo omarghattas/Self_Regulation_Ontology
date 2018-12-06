@@ -155,10 +155,18 @@ for p in data['predictors'].keys():
     simplified
     predictor_importances[p] = {}
     for t in data['targets'].keys():
+        # get scores
         tmp = data['all_predictions'][(p,t)]
         tmp_scores = {'CV_'+k:tmp[k]['scores_cv'][0]['R2'] for k in tmp.keys()}
         tmp_scores.update({'insample_'+k:tmp[k]['scores_insample'][0]['R2'] for k in tmp.keys()})
         simplified[p].update(tmp_scores)
+        # get 95% shuffled performance
+        shuffled_scores = {}
+        for k in tmp.keys():
+            shuffled_score = data['all_shuffled_predictions'][(p,t)][k]['scores_cv']
+            shuffled_95th = np.percentile( [i['R2'] for i in shuffled_scores], 95)
+            shuffled_scores['shuffled95_' + k] = shuffled_95th
+        simplified[p].update(shuffled_scores)
         # get importances
         for k in tmp.keys():
             importances = tmp[k]['importances'][0]
