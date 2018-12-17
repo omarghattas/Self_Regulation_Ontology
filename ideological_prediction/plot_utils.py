@@ -99,7 +99,46 @@ def visualize_importance(importance, ax, xticklabels=True, yticklabels=True,
                        facecolor='r', alpha=.1)
     """
 
-def polar_plots(predictions, target_order=None, show_sign=True, 
+def importance_bar_plots(predictions, target_order=None, show_sign=True, 
+                colorbar=True, size=5, dpi=300, filename=None):
+    #palette = sns.cubehelix_palette(100)
+    # plot
+    if target_order is None:
+        target_order = predictions.keys()
+    n_predictors = len(predictions[list(target_order)[0]]['importances'][0])
+    #set up color styling
+    palette = sns.color_palette('Blues_d',n_predictors)
+    # get max r2
+    max_r2 = 0
+    vals = [predictions[i] for i in target_order]
+    max_r2 = max(max_r2, max([i['scores_cv'][0]['R2'] for i in vals]))
+    importances = [(i['predvars'], 
+                        i['importances'][0]) for i in vals]
+    prediction_df = pd.DataFrame([i[1] for i in importances], columns=importances[0][0], index=target_order)    
+    prediction_df.sort_values(axis=1, by=prediction_df.index[0], inplace=True, ascending=False)
+    
+    # plot
+    sns.set_style('white')
+    ax = prediction_df.plot(kind='bar', edgecolor=None, linewidth=0,
+                             figsize=(size,size*.67), color=palette)
+    fig = ax.get_figure()
+    ax.tick_params(labelsize=size)
+    #ax.tick_params(axis='x', rotation=0)
+    ax.set_ylabel(r'Standardized $\beta$', fontsize=size*1.5)
+    # set up legend and other aesthetic
+    ax.grid(axis='y', linewidth=size/10)
+    leg = ax.legend(frameon=False, fontsize=size*1.5, bbox_to_anchor=(1.25,.8), 
+                     handlelength=0, handletextpad=0, framealpha=1)
+    beautify_legend(leg, colors=palette)          
+    for name, spine in ax.spines.items():
+        spine.set_visible(False)
+    if filename is not None:
+        save_figure(fig, filename, {'bbox_inches': 'tight', 'dpi': dpi})
+        plt.close()
+    else:
+        return fig
+            
+def importance_polar_plots(predictions, target_order=None, show_sign=True, 
                 colorbar=True, size=5, dpi=300, filename=None):
     # set up color styling
     palette = sns.color_palette('Blues_d',100)
@@ -367,6 +406,6 @@ def plot_predictors_comparison(R2_df, size=2, dpi=300, filename=None):
             if j>i:
                 ax.set_visible(False)
     if filename is not None:
-        save_figure(grid.fig, filename)
+        save_figure(grid.fig, filename, {'bbox_inches': 'tight', 'dpi': dpi})
     else:
         return grid

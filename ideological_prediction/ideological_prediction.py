@@ -181,8 +181,10 @@ simplified['Target_Cat'] = {}
 for t,vals in data['targets'].items():
     simplified['Target_Cat'].update({'CV_' + c:t for c in vals.columns})
     simplified['Target_Cat'].update({'insample_' + c:t for c in vals.columns})
-        
+    simplified['Target_Cat'].update({'shuffled95_' + c:t for c in vals.columns})
+
 simplified=pd.DataFrame(simplified)
+simplified.insert(0,'prediction_type', [i[0] for i in simplified.index.str.split('_')])
 simplified.to_csv(path.join(results_dir, 
                             'predictions_R2.csv'))
 json.dump(predictor_importances, 
