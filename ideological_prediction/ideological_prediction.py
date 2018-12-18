@@ -9,7 +9,7 @@ import argparse
 # parse arguments
 parser = argparse.ArgumentParser()
 parser.add_argument('-skip_factors', action='store_true')
-parser.add_argument('-skip_raw', action='store_true')
+parser.add_argument('-run_raw', action='store_false')
 parser.add_argument('-classifier', default='ridge')
 parser.add_argument('-raw_classifier', default='lasso')
 parser.add_argument('-EFA_rotation', default='oblimin')
@@ -31,7 +31,7 @@ from selfregulation.utils.utils import get_behav_data, get_recent_dataset, get_i
 
 # parse args
 run_factors = not args.skip_factors
-run_raw = not args.skip_raw
+run_raw = not args.run_raw
 classifier = args.classifier
 raw_classifier = args.raw_classifier
 shuffle_reps = args.shuffle_repeats
