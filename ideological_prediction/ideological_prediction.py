@@ -22,9 +22,11 @@ from os import makedirs, path
 import numpy as np
 import pandas as pd
 import pickle
+
 from dimensional_structure.prediction_utils import run_prediction
+from dimensional_structure.utils import residualize_baseline
 from selfregulation.utils.result_utils import load_results
-from selfregulation.utils.utils import get_behav_data, get_recent_dataset, get_info
+from selfregulation.utils.utils import get_behav_data, get_recent_dataset, get_info, get_demographics
 
 
 # parse args
@@ -35,12 +37,30 @@ raw_classifier = args.raw_classifier
 shuffle_reps = args.shuffle_repeats
 EFA_rotation = args.EFA_rotation
 
+results_dir = path.join(get_info('results_directory'), 'ideology_prediction')
+makedirs(results_dir, exist_ok=True)
+
 # load data
 dataset = get_recent_dataset()
 results = load_results(dataset)
 ideo_data = get_behav_data(dataset, file='ideology.csv')
-results_dir = path.join(get_info('results_directory'), 'ideology_prediction')
-makedirs(results_dir, exist_ok=True)
+
+# get demographics 
+ideo_demographics = get_behav_data(dataset, file='ideology_demographics.csv')
+# fill in ideo demographics from demographics if needed
+demographics = get_demographics()
+# fill gender
+missing_gender = ideo_demographics[ideo_demographics['Gender'].isnull()].index
+ideo_demographics.loc[missing_gender, 'Gender'] = demographics.loc[missing_gender, 'Sex']
+# Age can be off by a year potentially by the time the ideological data was collected
+missing_age = ideo_demographics[ideo_demographics['Age'].isnull()].index
+ideo_demographics.loc[missing_age, 'Age'] = demographics.loc[missing_age, 'Age']
+
+# reduce dataset to where we have full demographics
+ideo_demographics = ideo_demographics[ideo_demographics.isnull().sum(1)==0]
+ideo_data = ideo_data.loc[ideo_demographics.index]
+
+
 
 
 # define targets
@@ -51,6 +71,10 @@ for key, target in targets.items():
     imputed = pd.DataFrame(SoftImpute().complete(target),
                             index=target.index,
                             columns=target.columns)
+    
+    # residualize
+    imputed = residualize_baseline(imputed.join(ideo_demographics), 
+                                                baseline_vars=ideo_demographics.columns)
     targets[key] = imputed+1E-5
 
 # ****************************************************************
