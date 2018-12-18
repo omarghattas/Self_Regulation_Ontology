@@ -110,13 +110,13 @@ subsets = [{'name': 'task',
                                       'Speeded Information Processing',
                                       'Information Processing',
                                       'Discounting',
-                                      'Misc',
-                                      'Cold / Strategy',
-                                      'Hot / WM',
-                                      'default_decision_making', #but not two-stage perseverance?
+                                      'Misc-1',
+                                      'Cold/Strategy',
+                                      'Hot/WM',
+                                      'Model-Free Decision Making',
                                       'Response Inhibition',
                                       'Non-Decision',
-                                      'Misc'
+                                      'Misc-2'
                                       ],
             'oblimin_factor_names': ['Speeded IP', 'Strategic IP', 'Discounting',
                                      'Perc / Resp', 'Caution'],
@@ -148,11 +148,11 @@ subsets = [{'name': 'task',
                                        'Behavioral Approach',
                                        'Behavioral Inhibit',
                                        'FTP',
-                                       'Eating+',
+                                       'Eating',
                                        'Reward Sensitivity',
                                        'Sociability',
-                                       'Financial Risk Taking',
-                                       'Ethical/Health Risk Taking',
+                                       'Financial Risk-Taking',
+                                       'Ethical/Health Risk-Taking',
                                        'Risk Perception'
                                        ],
              'oblimin_factor_names':  ['Sensation Seeking', 'Mindfulness', 
@@ -249,28 +249,29 @@ for subset in subsets:
             results = load_results(datafile, name=name)[name]
         # run behavioral prediction using the factor results determined by BIC
         for classifier in classifiers:
-            results.run_prediction(classifier=classifier, verbose=verbose)
-            results.run_prediction(classifier=classifier, shuffle=shuffle_repeats, verbose=verbose) # shuffled
-            # predict demographic changes
-            if run_change:
-                results.run_change_prediction(classifier=classifier, verbose=verbose)
-                results.run_change_prediction(classifier=classifier, shuffle=shuffle_repeats, verbose=verbose) # shuffled
-    # ***************************** saving ****************************************
-    prediction_dir = path.join(results.get_output_dir(), 'prediction_outputs')
-    new_dir = path.join(path.dirname(results.get_output_dir()), 'prediction_outputs')
-    for classifier in classifiers:
-        for change_flag in [False, True]:
-            for subset in ['varimax', 'oblimin', 'raw']:
-                prediction_files = glob(path.join(prediction_dir, '*%s*' % classifier))
-                # filter by change
-                prediction_files = filter(lambda x: ('change' in x) == change_flag, prediction_files)
-                # filter by rorate
-                prediction_files = filter(lambda x: subset in x, prediction_files)
-                # sort by creation time and get last two files
-                prediction_files = sorted(prediction_files, key = path.getmtime)[-4:]
-                for filey in prediction_files:
-                    filename = '_'.join(path.basename(filey).split('_')[:-1])
-                    copyfile(filey, path.join(new_dir, '%s_%s.pkl' % (name, filename)))
+            for rotate in ['oblimin', 'varimax']:
+                results.run_prediction(classifier=classifier, rotate=rotate, verbose=verbose)
+                results.run_prediction(classifier=classifier, rotate=rotate, shuffle=shuffle_repeats, verbose=verbose) # shuffled
+                # predict demographic changes
+                if run_change:
+                    results.run_change_prediction(classifier=classifier, rotate=rotate, verbose=verbose)
+                    results.run_change_prediction(classifier=classifier, rotate=rotate, shuffle=shuffle_repeats, verbose=verbose) # shuffled
+        # ***************************** saving ****************************************
+        prediction_dir = path.join(results.get_output_dir(), 'prediction_outputs')
+        new_dir = path.join(path.dirname(results.get_output_dir()), 'prediction_outputs')
+        for classifier in classifiers:
+            for change_flag in [False, True]:
+                for subset in ['varimax', 'oblimin', 'raw']:
+                    prediction_files = glob(path.join(prediction_dir, '*%s*' % classifier))
+                    # filter by change
+                    prediction_files = filter(lambda x: ('change' in x) == change_flag, prediction_files)
+                    # filter by rorate
+                    prediction_files = filter(lambda x: subset in x, prediction_files)
+                    # sort by creation time and get last two files
+                    prediction_files = sorted(prediction_files, key = path.getmtime)[-4:]
+                    for filey in prediction_files:
+                        filename = '_'.join(path.basename(filey).split('_')[:-1])
+                        copyfile(filey, path.join(new_dir, '%s_%s.pkl' % (name, filename)))
 
 
     # ****************************************************************************
@@ -325,7 +326,10 @@ for subset in subsets:
             
             # Plot HCA
             if verbose: print("Plotting HCA")
+            drop_list = {('task', 'oblimin'): [0,5,9,11],
+                         ('survey', 'oblimin'): [1,4,7, 9,11]}
             plot_HCA(results, HCA_plot_dir, rotate=rotate,
+                     drop_list = drop_list.get((name, results), None),
                      size=size, dpi=dpi, ext=ext)
         
         # Plot prediction
@@ -463,8 +467,8 @@ if run_plot or group_plot:
     rotate = 'oblimin'
     exhaustive_lookup = {
             'analysis_overview': 'Fig01_Analysis_Overview',
-            'survey/HCA/dendrogram_EFA12_oblimin': 'Fig03_Survey_Dendrogram',
-            'task/HCA/dendrogram_EFA5_oblimin': 'Fig04_Task_Dendrogram',
+            'survey/HCA/%s/dendrogram_EFA12_%s' % (rotate, rotate): 'Fig03_Survey_Dendrogram',
+            'task/HCA/%s/dendrogram_EFA5_%s' % (rotate, rotate): 'Fig04_Task_Dendrogram',
             'survey/prediction/EFA_ridge_prediction_bar': 'Fig05_Survey_prediction',
             'task/prediction/EFA_ridge_prediction_bar': 'Fig06_Task_prediction',
             # test-retest
@@ -472,13 +476,13 @@ if run_plot or group_plot:
             'BIC_curves': 'FigS03_BIC_curves',
             'survey/EFA/factor_correlations_EFA12': 'FigS04_Survey_2nd-order',
             'task/EFA/factor_correlations_EFA5': 'FigS05_Task_2nd-order',
-            'communality_adjustment': 'FigS06_communality',
-            'EFA_test_retest': 'FigS07_EFA_retest',
+            '%s/communality_adjustment' % rotate: 'FigS06_communality',
+            '%s/EFA_test_retest' % rotate: 'FigS07_EFA_retest',
             'survey/EFA/factor_heatmap_EFA12': 'FigS08_Survey_EFA',
             'task/EFA/factor_heatmap_EFA5': 'FigS09_Task_EFA',
             'survey/HCA/dendrogram_data': 'FigS10_Survey_Raw_Dendrogram',
             'task/HCA/dendrogram_data': 'FigS11_Task_Raw_Dendrogram',
-            'silhouette_analysis': 'FigS12_Survey_Silhouette',
+            '%s/silhouette_analysis' % rotate: 'FigS12_Survey_Silhouette',
             # survey clusters
             # task clusters
             'task/DA/factor_heatmap_DA9': 'FigS15_Outcome_EFA',
@@ -490,16 +494,18 @@ if run_plot or group_plot:
     
     shortened_lookup = {
             'analysis_overview': 'Fig01_Analysis_Overview',
-            'survey/HCA/dendrogram_EFA12_oblimin': 'Fig03_Survey_Dendrogram',
-            'task/HCA/dendrogram_EFA5_oblimin': 'Fig04_Task_Dendrogram',
-            'survey/prediction/EFA_ridge_prediction_bar': 'Fig05_Survey_prediction',
-            'task/prediction/EFA_ridge_prediction_bar': 'Fig06_Task_prediction',
+            '%s/EFA_test_retest': 'FigS03_EFA_retest',
+            'survey/HCA/%s/dendrogram_EFA12_%s' % (rotate, rotate): 'Fig04_Survey_Dendrogram',
+            'task/HCA/%s/dendrogram_EFA5_%s' % (rotate, rotate): 'Fig05_Task_Dendrogram',
+            'survey/prediction/EFA_ridge_prediction_bar': 'Fig06_Survey_prediction',
+            'task/prediction/EFA_ridge_prediction_bar': 'Fig07_Task_prediction',
             # test-retest
             'cross_relationship': 'FigS02_cross_relationship',
             'BIC_curves': 'FigS03_BIC_curves',
-            'communality_adjustment': 'FigS04_communality',
-            'EFA_test_retest': 'FigS05_EFA_retest',
-            'silhouette_analysis': 'FigS06_Survey_Silhouette',
+            '%s/communality_adjustment' % rotate: 'FigS04_communality',
+            'task/EFA/%s/factor_heatmap_EFA12' % rotate: 'FigS05a_survey_correlation',
+            'task/EFA/%s/factor_heatmap_EFA5' % rotate: 'FigS05b_task_correlation',
+            '%s/silhouette_analysis' % rotate: 'FigS06_Survey_Silhouette',
             'survey/prediction/IDM_lasso_prediction_bar': 'FigS07_Survey_IDM_prediction',
             'task/prediction/IDM_lasso_prediction_bar': 'FigS08_Task_IDM_prediction',
             'survey/prediction/EFA_ridge_factor_fingerprint': 'FigS09_Survey_Factor_Fingerprints'
