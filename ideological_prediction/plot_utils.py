@@ -356,8 +356,9 @@ def plot_prediction_scatter(predictions, predictors, targets,
         ax.set_xlabel('Target Score', fontsize=size*1.2)
     
     empty_plots = n_cols*n_rows - len(targets.columns)
-    for ax in axes[-empty_plots:]:
-        ax.set_visible(False)
+    if empty_plots > 0:
+        for ax in axes[-empty_plots:]:
+            ax.set_visible(False)
     plt.subplots_adjust(hspace=.6, wspace=.3)
     if filename is not None:
         save_figure(fig, filename, {'bbox_inches': 'tight', 'dpi': dpi})
