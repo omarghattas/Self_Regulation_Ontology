@@ -10,14 +10,16 @@ from sklearn.preprocessing import MinMaxScaler
 from dimensional_structure.plot_utils import get_short_names, plot_loadings
 from selfregulation.utils.plot_utils import beautify_legend, CurvedText, format_num, save_figure
 
-colors = sns.color_palette('Blues_d',3) + sns.color_palette('Reds_d',2)[:1]
+
+ref_colors = {'survey': [sns.color_palette('Reds_d', 3)[i] for i in [0,2]], 
+              'task': [sns.color_palette('Blues_d', 3)[i] for i in [0,2]]}
+
 shortened_factors = get_short_names()
 
 def visualize_importance(importance, ax, xticklabels=True, yticklabels=True, 
                          axes_linewidth=None, label_size=10,
                          label_scale=0, title=None, 
-                         ymax=None, color=colors[1],
-                         show_sign=True):
+                         ymax=None, color='k'):
     importance_vars = importance[0]
     importance_vars = [shortened_factors.get(v,v) for v in importance_vars]
     if importance[1] is not None:
@@ -42,12 +44,9 @@ def visualize_importance(importance, ax, xticklabels=True, yticklabels=True,
         scale = 1+label_scale
         size = ax.get_position().expanded(scale, scale)
         ax2=ax.get_figure().add_axes(size,zorder=2)
-        for i, text in enumerate(ticks):
-            fontcolor='k'
-            if importance[1][i] < 0 and show_sign:
-                fontcolor = 'r'
-            arc_start = (i+.1)*2*np.pi/len(importance_vars)
-            arc_end = (i+.9)*2*np.pi/len(importance_vars)
+        for i, var in enumerate(importance_vars):
+            arc_start = (i+.2)*2*np.pi/len(importance_vars)
+            arc_end = (i+.8)*2*np.pi/len(importance_vars)
             curve = [
                 .85*np.cos(np.linspace(arc_start,arc_end,100)),
                 .85*np.sin(np.linspace(arc_start,arc_end,100))
@@ -94,9 +93,11 @@ def visualize_importance(importance, ax, xticklabels=True, yticklabels=True,
                        ymin=ylim[0], ymax=ylim[1]+1,
                        facecolor='r', alpha=.1)
 
-def plot_results_prediction(results, target_order=None, EFA=True, 
-                            classifier='ridge',rotate='oblimin', 
-                            change=False, plot_dir=None, **kwargs):
+
+def plot_prediction(results, target_order=None, EFA=True, classifier='ridge',
+                    rotate='oblimin', change=False, normalize=False, 
+                    metric='R2', size=4.6,  
+                    dpi=300, ext='png', plot_dir=None):
     """ Plots results object prediction results
     
     Args:
@@ -107,7 +108,8 @@ def plot_results_prediction(results, target_order=None, EFA=True,
         plot_dir: plot directory to save plot
         kwargs: (optional) to pass to plot_prediction
     """
-    
+    colors = ref_colors[results.ID.split('_')[0]]
+    basefont = max(size, 5)
     predictions = results.load_prediction_object(EFA=EFA, 
                                              change=change,
                                              classifier=classifier,
@@ -198,9 +200,9 @@ def plot_prediction(predictions, shuffled_predictions, EFA=None,
     width=.25
     ax1 = fig.add_axes([0,0,1,.5]) 
     ax1.bar(ind, [i[1] for i in r2s], width, 
-            label='Cross-validated prediction', color=colors[1])
+            label='Cross-validated prediction', color=colors[0])
     ax1.bar(ind+width, [i[1] for i in insample_r2s], width, 
-            label='Insample prediction', color=colors[2])
+            label='Insample prediction', color=colors[1])
     # plot shuffled values above
     ax1.bar(ind, [i[1] for i in shuffled_r2s], width, 
              color='none', edgecolor=shuffled_grey, 
@@ -221,7 +223,7 @@ def plot_prediction(predictions, shuffled_predictions, EFA=None,
     # add a legend
     leg = ax1.legend(fontsize=basefont*1.4, loc='upper left', 
                      frameon=True, handlelength=0, handletextpad=0)
-    beautify_legend(leg, colors[1:3]+[shuffled_grey])
+    beautify_legend(leg, colors[:2]+[shuffled_grey])
     # change y extents
     ylim = ax1.get_ylim()
     r2_max = max(max(r2s, key=lambda x: x[1])[1],
@@ -229,8 +231,8 @@ def plot_prediction(predictions, shuffled_predictions, EFA=None,
     ymax = r2_max*1.5
     ax1.set_ylim(ylim[0], ymax)
     # change yticks
-    if ymax<.08:
-        ax1.set_ylim(ylim[0], .08)
+    if ymax<.1:
+        ax1.set_ylim(ylim[0], .1)
         ax1.yaxis.set_major_locator(ticker.MultipleLocator(.025))
     else:
         ax1.yaxis.set_major_locator(ticker.MultipleLocator(.05))
@@ -273,8 +275,8 @@ def plot_prediction(predictions, shuffled_predictions, EFA=None,
         for i, importance in enumerate(importances):
             if pd.isnull(plot_heights[i]):
                 continue
-            axes.append(fig.add_axes([plot_x[i], plot_heights[i], plot_size*ratio, plot_size], projection='polar'))
-            color = colors[1]
+            axes.append(fig.add_axes([plot_x[i], plot_heights[i], 1/N,1/N], projection='polar'))
+            color = colors[0]
             visualize_importance(importance, axes[-1],
                                  yticklabels=False, 
                                  xticklabels=False,
@@ -296,11 +298,8 @@ def plot_prediction(predictions, shuffled_predictions, EFA=None,
         if len(text) > 0:
             pad = .05
             text_ax = fig.add_axes([.8,.56,.1,.34]) 
-            text_ax.tick_params(which='both', 
-                                bottom=False, 
-                                labelbottom=False,
-                                left=False,
-                                labelleft=False)
+            text_ax.tick_params(labelleft=False, left=False, 
+                                labelbottom=False, bottom=False)
             for spine in ['top','right','bottom','left']:
                 text_ax.spines[spine].set_visible(False)
             for i, (val, abr) in enumerate(text):
@@ -314,9 +313,8 @@ def plot_prediction(predictions, shuffled_predictions, EFA=None,
                              label_size=max(figsize[1]*1.5, 5),
                              label_scale=.22,
                              title=best_predictors[-1][1][0],
-                             color=colors[1],
-                             axes_linewidth=size/10,
-                             show_sign=show_sign)
+                             color=colors[0],
+                             axes_linewidth=size/10)
         # 2nd top
         label_importance = importances[best_predictors[-2][0]]
         ratio = figsize[1]/figsize[0]
@@ -327,7 +325,7 @@ def plot_prediction(predictions, shuffled_predictions, EFA=None,
                              label_size=max(figsize[1]*1.5, 5),
                              label_scale=.22,
                              title=best_predictors[-2][1][0],
-                             color=colors[1],
+                             color=colors[0],
                              axes_linewidth=size/10,
                              show_sign=show_sign)
         
@@ -395,6 +393,7 @@ def plot_prediction_scatter(results, target_order=None, EFA=True, change=False,
         
 def plot_prediction_comparison(results, size=4.6, change=False,
                                dpi=300, ext='png', plot_dir=None):
+    colors = ref_colors[results.ID.split('_')[0]]
     R2s = {}
     for EFA in [False, True]:
         predictions = results.get_prediction_files(EFA=EFA, change=change, 
@@ -416,12 +415,12 @@ def plot_prediction_comparison(results, size=4.6, change=False,
     R2s['Feature'], R2s['Classifier'] = R2s.Classifier.str.split('_', 1).str
     f = plt.figure(figsize=(size, size*.62))
     sns.barplot(x='Classifier', y='R2', data=R2s, hue='Feature',
-                palette=colors[1:3], errwidth=size/5)
+                palette=colors[:2], errwidth=size/5)
     ax = plt.gca()
     ax.tick_params(axis='y', labelsize=size*1.8)
     ax.tick_params(axis='x', labelsize=size*1.8)
     leg = ax.legend(fontsize=size*2, loc='upper right')
-    beautify_legend(leg, colors[1:3])
+    beautify_legend(leg, colors[:2])
     plt.xlabel('Classifier', fontsize=size*2.2, labelpad=size/2)
     plt.ylabel('R2', fontsize=size*2.2, labelpad=size/2)
     plt.title('Comparison of Prediction Methods', fontsize=size*2.5, y=1.05)
@@ -489,6 +488,7 @@ def plot_outcome_ontological_similarity(results, EFA=True, classifier='ridge',
 def plot_factor_fingerprint(results, classifier='ridge', rotate='oblimin', 
                             change=False, size=4.6,  
                             dpi=300, ext='png', plot_dir=None):
+    colors = ref_colors[results.ID.split('_')[0]]
     reorder_vec = results.DA.get_factor_reorder(results.DA.results['num_factors'])
     targets = results.DA.get_loading().columns
     targets = [targets[i] for i in reorder_vec]
@@ -519,9 +519,10 @@ def plot_factor_fingerprint(results, classifier='ridge', rotate='oblimin',
         visualize_importance(label_importance, axes[i], yticklabels=False,
                              xticklabels=True,
                              title=factor,
-                             label_size=size,
-                             label_scale=.23,
-                             color=colors[3])
+                             label_size=size*1.2,
+                             label_scale=.17,
+                             color=colors[0],
+                             ymax=math.ceil(np.max(importances)*10)/10)
     
     if plot_dir is not None:
         changestr = '_change' if change else ''

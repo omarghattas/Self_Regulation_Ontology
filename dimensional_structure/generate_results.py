@@ -93,51 +93,40 @@ dataset = path.join(basedir,'Data',dataset)
 datafile = dataset.split(path.sep)[-1]
 
 # label subsets
-demographic_factor_names = ['Drug Use', 
+demographic_factor_names = ['Drug Use',
                             'Mental Health',
                             'Problem Drinking',
                             'Daily Smoking',
                             'Binge Drinking',
-                            'Obesity',
                             'Lifetime Smoking',
-                            'Unsafe Drinking',
+                            'Obesity',
                             'Income / Life Milestones']
+
+
+
 subsets = [{'name': 'task', 
             'regex': 'task',
-            'oblimin_cluster_names': ['Inhibition-Related Threshold',
-                                      'Caution',
-                                      'Conflict Drift',
-                                      'Speeded Information Processing',
-                                      'Information Processing',
-                                      'Discounting',
-                                      'Misc-1',
-                                      'Cold/Strategy',
-                                      'Hot/WM',
-                                      'Model-Free Decision Making',
-                                      'Response Inhibition',
-                                      'Non-Decision',
-                                      'Misc-2'
+            'oblimin_cluster_names': ['Speeded Information Processing',
+                                        'Information Processing',
+                                        'State Flexibility',
+                                        'Conflict Processing',
+                                        'Misc-1',
+                                        'Caution',
+                                        'Inhibition-Related Threshold',
+                                        'Misc-2',
+                                        'Response Inhibition',
+                                        'Non-Decision',
+                                        'Discounting',
+                                        'Misc-3',
+                                        'Decisiveness', 
+                                        'Misc-4',
+                                        'Cold/Model-Based',
+                                        'Hot/Model-Free'
                                       ],
             'oblimin_factor_names': ['Speeded IP', 'Strategic IP', 'Discounting',
                                      'Perc / Resp', 'Caution'],
-            'varimax_cluster_names': ['conflict_drift',
-                                      '1',
-                                      'response_inhibition_thresh',
-                                      'general_thresh',
-                                      'non_decision',
-                                      'holt/nback',
-                                      'writing',
-                                      'default_decision_making',
-                                      'hot/implicit_reasoning/IQ',
-                                      'discounting',
-                                      'cold/explicit_reasoning/IQ',
-                                      '11',
-                                      'updating_IP',
-                                       'SSRT+',
-                                       'general_drift',
-                                      ],
-            'varimax_factor_names': ['Speeded IP', 'Strategic IP', 'Perc / Resp',
-                                     'Discounting', 'Caution'],
+            'varimax_cluster_names': None,
+            'varimax_factor_names': None,
             'predict': True},
             {'name': 'survey',
              'regex': 'survey',
@@ -145,9 +134,8 @@ subsets = [{'name': 'task',
                                        'Mindfulness',
                                        'Self-Control',
                                        'Goal-Directedness',
-                                       'Behavioral Approach',
                                        'Behavioral Inhibit',
-                                       'FTP',
+                                       'Behavioral Approach',
                                        'Eating',
                                        'Reward Sensitivity',
                                        'Sociability',
@@ -157,27 +145,12 @@ subsets = [{'name': 'task',
                                        ],
              'oblimin_factor_names':  ['Sensation Seeking', 'Mindfulness', 
                                    'Impulsivity',  'Emotional Control',
-                                   'Reward Sensitivity', 'Goal-Directedness', 
+                                   'Goal-Directedness', 'Reward Sensitivity', 
                                    'Risk Perception', 'Eating Control', 
                                    'Ethical Risk-Taking', 'Social Risk-Taking',
                                    'Financial Risk-Taking', 'Agreeableness'],
-            'varimax_cluster_names': ['Financial Risk Taking',
-                                      'Risk Perception',
-                                      'Ethical/health Risk Taking',
-                                      'Sociability',
-                                      'Behavioral Approach/FTP',
-                                      'Self-Control',
-                                      '6',
-                                      'Social Risk Taking',
-                                      'Sensation Seeking',
-                                      'Reward Sensitivity'
-                                      ],
-            'varimax_factor_names': ['Impulsivity', 'Sensation Seeking', 
-                                     'Emotional Control',  'Reward Sensitivity', 
-                                     'Ethical Risk-Taking', 'Risk Perception', 
-                                     'Social Risk-Taking',  'Eating Control',
-                                     'Financial Risk-Taking', 'Agreeableness', 
-                                     'Mindfulness',  'Goal-Directedness'],
+            'varimax_cluster_names': None,
+            'varimax_factor_names': None,
              'predict': True},
              {'name': 'main_subset', 
             'regex': 'main',
@@ -323,13 +296,13 @@ for subset in subsets:
             plot_EFA_change(combined=combined, 
                             plot_dir=path.join(EFA_plot_dir, rotate),
                             size=size, dpi=dpi, ext=ext)
-            
             # Plot HCA
             if verbose: print("** Plotting HCA %s **" % rotate)
-            drop_list = {('task', 'oblimin'): [0,5,9,11],
-                         ('survey', 'oblimin'): [1,4,7, 9,11]}
+            drop_list = {('task', 'oblimin'): ([1,3,5,7,9,11,13,15],[2,6,10,14]) ,
+                         ('survey', 'oblimin'): ([1,3,5,7, 9,11], None)}
+            drop1, drop2 = drop_list.get((name, rotate), (None, None))
             plot_HCA(results, HCA_plot_dir, rotate=rotate,
-                     drop_list = drop_list.get((name, rotate), None),
+                     drop_list = drop1, double_drop_list=drop2,
                      size=size, dpi=dpi, ext=ext)
         # Plot prediction
         if results.get_prediction_files() is not None:
@@ -483,9 +456,8 @@ if run_plot or group_plot:
             print('Moving plots to paper directory')
     if all_results is not None:
         plot_file = path.dirname(all_results['task'].get_plot_dir())
-        
     else:
-        plot_file = results.get_plot_dir()
+        plot_file = path.dirname(results.get_plot_dir())
     
     rotate = 'oblimin'
     exhaustive_lookup = {
@@ -522,16 +494,17 @@ if run_plot or group_plot:
             'task/HCA/%s/dendrogram_EFA5_%s' % (rotate, rotate): 'Fig05_Task_Dendrogram',
             'survey/prediction/%s/EFA_ridge_prediction_bar' % rotate: 'Fig06_Survey_prediction',
             'task/prediction/%s/EFA_ridge_prediction_bar' % rotate: 'Fig07_Task_prediction',
+            'survey/prediction/%s/EFA_ridge_factor_fingerprint' % rotate: 'Fig08_Survey_Factor_Fingerprints',
             # test-retest
             'cross_relationship': 'FigS02_cross_relationship',
             'BIC_curves': 'FigS03_BIC_curves',
             '%s/communality_adjustment' % rotate: 'FigS04_communality',
-            'survey/EFA/%s/factor_heatmap_EFA12' % rotate: 'FigS05a_survey_correlation',
-            'task/EFA/%s/factor_heatmap_EFA5' % rotate: 'FigS05b_task_correlation',
-            '%s/silhouette_analysis' % rotate: 'FigS06_Survey_Silhouette',
-            'survey/prediction/IDM_lasso_prediction_bar': 'FigS07_Survey_IDM_prediction',
-            'task/prediction/IDM_lasso_prediction_bar': 'FigS08_Task_IDM_prediction',
-            'survey/prediction/%s/EFA_ridge_factor_fingerprint' % rotate: 'FigS09_Survey_Factor_Fingerprints'
+            'survey/EFA/%s/factor_correlations_EFA12' % rotate: 'FigS05a_survey_correlation',
+            'task/EFA/%s/factor_correlations_EFA5' % rotate: 'FigS05b_task_correlation',
+            'task/DA/factor_correlations_EFA8': 'FigS05c_demo_correlation',
+            '%s/silhouette_analysis' % rotate: 'FigS06_HCA_Silhouettes',
+            'survey/prediction/IDM_lasso_prediction_bar': 'FigS07a_Survey_IDM_prediction',
+            'task/prediction/IDM_lasso_prediction_bar': 'FigS07b_Task_IDM_prediction'
             }
     
     paper_dir = path.join(basedir, 'Results', 'Psych_Ontology_Paper')
