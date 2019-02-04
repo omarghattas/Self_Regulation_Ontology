@@ -54,7 +54,7 @@ def print_prediction_performance(results, EFA=True):
         print(classifier)
         out = results.load_prediction_object(classifier=classifier,
                                              EFA=EFA)['data']
-        keys = ['Binge Drinking', 'Problem Drinking', 'Unsafe Drinking',
+        keys = ['Binge Drinking', 'Problem Drinking', 
                 'Drug Use', 'Lifetime Smoking', 'Daily Smoking', 
                 'Mental Health', 'Obesity', 'Income / Life Milestones']
         for key in keys:
@@ -77,7 +77,7 @@ def run_group_prediction(all_results, shuffle=False, classifier='lasso',
         print('*'*79)
     
     names = [r.ID.split('_')[0] for r in all_results.values()]
-    name = '_'.join(names)
+    name = '_'.join(sorted(names)[::-1])
     factor_scores = pd.concat([r.EFA.get_scores(rotate=rotate) 
                                 for r in all_results.values()], axis=1)
     tmp_results = list(all_results.values())[0]
@@ -90,6 +90,10 @@ def run_group_prediction(all_results, shuffle=False, classifier='lasso',
     if include_raw_demographics:
         targets.append(('demo_raw', tmp_results.demographics))
     out = {}
+    if shuffle is False:
+        shuffle_flag = '_'
+    else:
+        shuffle_flag = '_shuffled_'
     for target_name, target in targets:
         predictors = ('EFA_%s_%s' % (name, rotate), factor_scores)
         # predicting using best EFA
@@ -97,7 +101,7 @@ def run_group_prediction(all_results, shuffle=False, classifier='lasso',
         prediction = run_prediction(predictors[1], 
                         target, 
                         output_dir,
-                        outfile='%s_%s_prediction' % (predictors[0], target_name), 
+                        outfile='%s_%s%sprediction' % (predictors[0], target_name, shuffle_flag), 
                         shuffle=shuffle,
                         classifier=classifier, 
                         verbose=verbose, 
@@ -107,11 +111,12 @@ def run_group_prediction(all_results, shuffle=False, classifier='lasso',
     
 def print_group_prediction(prediction_loc):
     for classifier in ['ridge', 'lasso', 'rf', 'svm']:
-        files = glob.glob(os.path.join(prediction_loc, '*%s*' % classifier))
+        files = glob.glob(os.path.join(prediction_loc, '*task_survey*%s*' % classifier))
+        files = [f for f in files if 'shuffle' not in f]
         files.sort(key=os.path.getmtime)
         out = pickle.load(open(files[-1], 'rb'))['data']
         print(classifier)
-        keys = ['Binge Drinking', 'Problem Drinking', 'Unsafe Drinking',
+        keys = ['Binge Drinking', 'Problem Drinking',
                 'Drug Use', 'Lifetime Smoking', 'Daily Smoking', 
                 'Mental Health', 'Obesity', 'Income / Life Milestones']
         for key in keys:

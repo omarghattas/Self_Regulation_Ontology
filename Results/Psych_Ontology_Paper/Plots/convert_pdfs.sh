@@ -6,5 +6,3 @@ do
     pdftoppm -r 600 $f ${f%.pdf} -png
 done
 mv *.png png
-
-

@@ -31,6 +31,7 @@ def plot_BIC_SABIC(results, size=2.3, dpi=300, ext='png', plot_dir=None):
     colors = ['c', 'm']
     with sns.axes_style('white'):
         fig, ax1 = plt.subplots(1,1, figsize=(size, size*.75))
+        x = sorted(list(EFA.results['cscores_metric-BIC'].keys()))
         # BIC
         BIC_scores = [EFA.results['cscores_metric-BIC'][i] for i in x]
         BIC_c = EFA.results['c_metric-BIC']
@@ -664,7 +665,8 @@ def plot_DDM(results, c, rotate='oblimin',
 def plot_EFA(results, plot_dir=None, rotate='oblimin', 
              verbose=False, size=4.6, dpi=300, ext='png',
              plot_task_kws={}):
-    plot_dir = path.join(plot_dir, rotate)
+    if plot_dir:
+        plot_dir = path.join(plot_dir, rotate)
     c = results.EFA.get_c()
     #if verbose: print("Plotting BIC/SABIC")
     #plot_BIC_SABIC(EFA, plot_dir)

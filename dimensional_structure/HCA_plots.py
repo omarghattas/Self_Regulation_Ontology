@@ -1,6 +1,7 @@
 # imports
 from itertools import combinations
 from math import ceil
+from matplotlib.colors import to_hex
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 import numpy as np
@@ -108,23 +109,24 @@ def plot_clustering_similarity(results, plot_dir=None, verbose=False, ext='png')
               % score_consistency)
         
     
-def plot_subbranch(cluster_i, tree, loading, cluster_sizes, title=None,
+def plot_subbranch(target_color, cluster_i, tree, loading, cluster_sizes, title=None,
                    size=2.3, dpi=300, plot_loc=None):
     sns.set_style('white')
     colormap = sns.diverging_palette(220,15,n=100,as_cmap=True)
     # get variables in subbranch based on coloring
-    curr_index = 0
     curr_color = tree['color_list'][0]
     start = 0
     for i, color in enumerate(tree['color_list']):
         if color != curr_color:
             end = i
-            if curr_index == cluster_i:
+            if curr_color == to_hex(target_color):
                 break
             if color != "#808080":
-                curr_index += 1
                 start = i
             curr_color = color
+    
+    if (end-start)+1 != cluster_sizes[cluster_i]:
+        return
     
     # get subset of loading
     cumsizes = np.cumsum(cluster_sizes)
@@ -214,7 +216,7 @@ def plot_subbranch(cluster_i, tree, loading, cluster_sizes, title=None,
         plt.close()
     else:
         return fig
-    
+
 def plot_subbranches(results, rotate='oblimin', EFA_clustering=True,
                      cluster_range=None, absolute_loading=False,
                      size=2.3, dpi=300, ext='png', plot_dir=None):
@@ -232,7 +234,7 @@ def plot_subbranches(results, rotate='oblimin', EFA_clustering=True,
     """
     HCA = results.HCA
     EFA = results.EFA
-    loading = EFA.reorder_factors(EFA.get_loading(rotate=rotate))
+    loading = EFA.reorder_factors(EFA.get_loading(rotate=rotate), rotate=rotate)
     loading.index = format_variable_names(loading.index)
     if EFA_clustering:
         inp = 'EFA%s_%s' % (EFA.get_c(), rotate)
@@ -269,13 +271,15 @@ def plot_subbranches(results, rotate='oblimin', EFA_clustering=True,
         if plot_dir:
             filey = 'cluster_%s.%s' % (str(cluster_i).zfill(2), ext)
             plot_loc = path.join(plot_dir, function_directory, filey)
-        fig = plot_subbranch(cluster_i, tree, ordered_loading, cluster_sizes,
+        fig = plot_subbranch(colors[cluster_i], cluster_i, tree, 
+                             ordered_loading, cluster_sizes,
                              title=cluster_labels[cluster_i], 
                              size=size, plot_loc=plot_loc)
-        figs.append(fig)
+        if fig:
+            figs.append(fig)
     return figs
                 
-def plot_results_dendrogram(results, rotate='oblimin', 
+def plot_results_dendrogram(results, rotate='oblimin', hierarchical_EFA=False,
                             EFA_clustering=True, title=None, size=4.6,  
                             ext='png', plot_dir=None,
                             **kwargs):
@@ -283,11 +287,27 @@ def plot_results_dendrogram(results, rotate='oblimin',
     HCA = results.HCA
     EFA = results.EFA     
     c = EFA.get_c()
-    loading = EFA.reorder_factors(EFA.get_loading(c, rotate=rotate))
     if EFA_clustering:
         inp = 'EFA%s_%s' % (c, rotate)
     else:
         inp = 'data'
+    if hierarchical_EFA or not EFA_clustering:
+        loading = EFA.reorder_factors(EFA.get_loading(c, rotate=rotate))
+    else:
+        loading = EFA.get_loading(c, rotate=rotate)
+        cluster_names = HCA.get_cluster_names(inp=inp)
+        cluster_loadings = HCA.get_cluster_loading(EFA, rotate=rotate)
+        loading_order = []
+        i = 0
+        while len(loading_order) < c and i<len(cluster_names):
+            cluster_loading = cluster_loadings[cluster_names[i]]
+            top_factor = cluster_loading.idxmax()
+            if top_factor not in loading_order:
+                loading_order.append(top_factor)
+            i+=1
+        loading_order += list(set(loading.columns)-set(loading_order))
+        loading = loading.loc[:, loading_order]
+            
     clustering = HCA.results[inp]
     name = inp
     if title is None:
@@ -309,6 +329,8 @@ def transform_name(name):
         name= 'Decis.'
     elif name == 'Response Inhibition':
         name= 'Resp. Inhib.'
+    elif name[:2] == "NA":
+        name = ""
     return '\n'.join(name.split())
     
 def plot_dendrogram(loading, clustering, title=None, 
@@ -417,23 +439,24 @@ def plot_dendrogram(loading, clustering, title=None,
                                 fontsize=heatmap_size[2]*size*1)
             ticks = ax2.xaxis.get_ticklines()[::2]
             for i, label in enumerate(ax2.get_xticklabels()):
-                ax2.hlines(c+offset,beginnings[i]+.5,beginnings[i]+cluster_sizes[i]-.5, 
-                           clip_on=False, color=colors[i], linewidth=size/5)
-                label.set_color(colors[i])
-                ticks[i].set_color(colors[i])
-                y_drop = .005
-                line_drop = .3
-                if drop_list and i in drop_list:
-                    y_drop = .05
-                    line_drop = 1.6
-                if double_drop_list and i in double_drop_list:
-                    y_drop = .1
-                    line_drop = 2.9
-                label.set_y(-(y_drop/heatmap_height+heatmap_height/c*offset))
-                ax2.vlines(beginnings[i]+cluster_sizes[i]/2, 
-                           c+offset, c+offset+line_drop,
-                           clip_on=False, color=colors[i], 
-                           linewidth=size/7.5)
+                if label.get_text() != '':
+                    ax2.hlines(c+offset,beginnings[i]+.5,beginnings[i]+cluster_sizes[i]-.5, 
+                               clip_on=False, color=colors[i], linewidth=size/5)
+                    label.set_color(colors[i])
+                    ticks[i].set_color(colors[i])
+                    y_drop = .005
+                    line_drop = .3
+                    if drop_list and i in drop_list:
+                        y_drop = .05
+                        line_drop = 1.6
+                    if double_drop_list and i in double_drop_list:
+                        y_drop = .1
+                        line_drop = 2.9
+                    label.set_y(-(y_drop/heatmap_height+heatmap_height/c*offset))
+                    ax2.vlines(beginnings[i]+cluster_sizes[i]/2, 
+                               c+offset, c+offset+line_drop,
+                               clip_on=False, color=colors[i], 
+                               linewidth=size/7.5)
 
         # add title
         if title:
@@ -665,6 +688,9 @@ def plot_silhouette(results, inp='data', labels=None, axes=None,
         # Aggregate the silhouette scores for samples belonging to
         # cluster i, and sort them
         ith_cluster_silhouette_values = sample_scores[labels == i+1]
+        # skip "clusters" with one value
+        if len(ith_cluster_silhouette_values) == 1:
+            continue
         ith_cluster_silhouette_values.sort()
         size_cluster_i = ith_cluster_silhouette_values.shape[0]
         # update y range and plot

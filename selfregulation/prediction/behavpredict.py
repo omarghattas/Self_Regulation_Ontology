@@ -14,8 +14,8 @@ import subprocess
 import warnings
 
 from sklearn.ensemble import ExtraTreesClassifier,ExtraTreesRegressor
-from sklearn.model_selection import StratifiedKFold
-from sklearn.metrics import roc_auc_score,mean_absolute_error
+from sklearn.model_selection import cross_val_score,StratifiedKFold,ShuffleSplit
+from sklearn.metrics import roc_auc_score,mean_absolute_error, r2_score
 from sklearn.linear_model import (LassoCV,LogisticRegressionCV,
                                   LogisticRegression,RidgeCV)
 from sklearn.preprocessing import StandardScaler
@@ -208,7 +208,7 @@ class BehavPredict:
 
     def run_binary(self,v,imputer):
         if self.binary_classifier=='rf':
-            binary_clf=ExtraTreesClassifier()
+            binary_clf=ExtraTreesClassifier(n_estimators=10)
         elif self.binary_classifier=='svm':
             binary_clf = svm.LinearSVC()
         elif self.binary_classifier=='lasso':
@@ -267,7 +267,7 @@ class BehavPredict:
                 
     def run_regression(self,v,imputer):
         if self.classifier=='rf':
-            clf=ExtraTreesRegressor()
+            clf=ExtraTreesRegressor(n_estimators=10)
         elif self.classifier=='lasso':
             if not self.data_models[v]=='gaussian':
                 if self.verbose:
@@ -311,7 +311,7 @@ class BehavPredict:
             pred=clf.predict(Xdata)
     
             if numpy.var(pred)>0:
-                scores.append({'R2': numpy.corrcoef(Ydata,pred)[0,1]**2,
+                scores.append({'R2': r2_score(Ydata,pred),
                                'MAE': mean_absolute_error(Ydata,pred)})
                 
             else:
@@ -355,7 +355,7 @@ class BehavPredict:
             print('classifying',v,numpy.mean(self.targetdata[v]))
             print('using classifier:',self.classifier)
         if self.binary_classifier=='rf':
-            clf=ExtraTreesClassifier()
+            clf=ExtraTreesClassifier(n_estimators=10)
         elif self.binary_classifier=='svm':
             clf = svm.LinearSVC()
         elif self.binary_classifier=='lasso':
@@ -427,7 +427,7 @@ class BehavPredict:
             print('%s regression on'%self.data_models[v],v,numpy.mean(self.targetdata[v]>0))
             print('using classifier:',self.classifier)
         if self.classifier=='rf':
-            clf=ExtraTreesRegressor()
+            clf=ExtraTreesRegressor(n_estimators=10)
         elif self.classifier=='lasso':
             if not self.data_models[v]=='gaussian':
                 if self.verbose:
@@ -488,7 +488,7 @@ class BehavPredict:
                 pred[test]=p
     
             if numpy.var(pred)>0:
-                scores.append({'R2': numpy.corrcoef(Ydata,pred)[0,1]**2,
+                scores.append({'R2': r2_score(Ydata,pred),
                                'MAE': mean_absolute_error(Ydata,pred)})
             else:
                if self.verbose:
