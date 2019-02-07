@@ -68,7 +68,7 @@ targets = {'ideo_factors': ideo_data.filter(regex='Factor'),
            'ideo_orientations': ideo_data.drop(ideo_data.filter(regex='Factor|SECS').columns, axis=1).drop(['Conservatism','Intellectual Humility'], axis=1),
            'ideo_policies': ideo_data.filter(regex='SECS')}
 for key, target in targets.items():
-    imputed = pd.DataFrame(SoftImpute().complete(target),
+    imputed = pd.DataFrame(SoftImpute().fit_transform(target),
                             index=target.index,
                             columns=target.columns)
     
