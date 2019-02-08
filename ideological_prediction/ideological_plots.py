@@ -1,8 +1,10 @@
 from collections import OrderedDict as odict
 from os import makedirs, path
+import numpy as np
 import pandas as pd
 import pickle
-from ideological_prediction.plot_utils import (plot_outcome_ontological_similarity,
+from ideological_prediction.plot_utils import (plot_RSA,
+                                               plot_outcome_ontological_similarity,
                                                plot_prediction, plot_prediction_scatter,
                                                importance_bar_plots,
                                                importance_polar_plots,
@@ -23,7 +25,7 @@ all_predictions = data['all_predictions']
 all_shuffled_predictions = data['all_shuffled_predictions']
 predictors = data['predictors']
 targets = data['targets']
-
+RSA = {}
 for target in targets.keys():
     predictions = odict()
     shuffled_predictions = odict()
@@ -46,9 +48,10 @@ for target in targets.keys():
         
             # plot ontological similarity
             if predictor_key != 'raw_measures':
-                plot_outcome_ontological_similarity(predictions[predictor_key],
+                corr = plot_outcome_ontological_similarity(predictions[predictor_key],
                                 size=15,
                                 filename=path.join(plot_dir, '%s_%s_similarity.%s' % (predictor_key, target, ext)))
+                RSA[(predictor_key, target)] = corr
             else:
                 print("Key couldn't be found! %s, %s" % (predictor_key, target))
     plot_prediction(predictions, shuffled_predictions, 
@@ -69,3 +72,27 @@ simplified = pd.read_csv(path.join(results_dir, 'predictions_R2.csv'),
 plot_predictors_comparison(simplified,
                            size=3,
                            filename=path.join(plot_dir, 'prediction_compare.pdf'))
+
+# compare correlations amongst representaitons
+for key,val in targets.items():
+    corr = val.corr()
+    plot_RSA(corr, True,
+             filename=path.join(plot_dir, '%s_heatmap.%s' % (key, ext)))
+    
+def tril(A):
+    indices = np.tril_indices_from(A, -1)
+    return A.values[indices]
+
+flattened = {'ideo_orientations': {'orig': tril(targets['ideo_orientations'].corr())},
+             'ideo_factors': {'orig': tril(targets['ideo_factors'].corr())},
+             'ideo_policies': {'orig': tril(targets['ideo_policies'].corr())}}
+
+for (pred, target),val in RSA.items():
+    order = targets[target].columns
+    flatten_vals = tril(val.loc[order, order])
+    flattened[target][pred] = flatten_vals
+    
+for key in flattened:
+    plot_RSA(pd.DataFrame(flattened[key]).corr(), 
+             filename=path.join(plot_dir, '%s_RSA_comparisons.%s' % (key, ext)))
+

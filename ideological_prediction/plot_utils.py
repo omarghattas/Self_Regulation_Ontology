@@ -364,7 +364,24 @@ def plot_prediction_scatter(predictions, predictors, targets,
         save_figure(fig, filename, {'bbox_inches': 'tight', 'dpi': dpi})
         plt.close()
 
-def plot_outcome_ontological_similarity(predictions, size=4.6, 
+def plot_RSA(corr, cluster=False, size=8, dpi=300, filename=None):
+    """ plots similarity of ontological fingerprints between outcomes """
+    figsize = (size,size)
+    if cluster == False:
+        f = plt.figure(figsize=figsize)
+        ax=sns.heatmap(corr, square=True,
+                     cmap=sns.diverging_palette(220,15,n=100,as_cmap=True))
+    else:
+        f = sns.clustermap(corr,
+                         cmap=sns.diverging_palette(220,15,n=100,as_cmap=True),
+                         figsize=figsize)
+        ax = f.ax_heatmap
+    ax.set_yticklabels(ax.get_yticklabels(), rotation=0)
+    if filename is not None:
+        save_figure(f, filename, {'bbox_inches': 'tight', 'dpi': dpi})
+        plt.close()
+        
+def plot_outcome_ontological_similarity(predictions, size=8, 
                                         dpi=300, filename=None):
     """ plots similarity of ontological fingerprints between outcomes """
 
@@ -374,15 +391,9 @@ def plot_outcome_ontological_similarity(predictions, size=4.6,
     importances = np.vstack([predictions[k]['importances'] for k in targets])
     # convert to dataframe
     df = pd.DataFrame(importances, index=targets, columns=predictors)
-    plt.figure(figsize=(8,12))
-    f=sns.clustermap(df.T.corr(),
-                     cmap=sns.diverging_palette(220,15,n=100,as_cmap=True))
-    ax = f.ax_heatmap
-    ax.set_yticklabels(ax.get_yticklabels(), rotation=0)
-    if filename is not None:
-        save_figure(f, filename, {'bbox_inches': 'tight', 'dpi': dpi})
-        plt.close()
-        
+    plot_RSA(df.T.corr(), True, size, dpi, filename)
+    return df.T.corr()
+
 def plot_predictors_comparison(R2_df, size=2, dpi=300, filename=None):
     CV_df = R2_df.filter(regex='CV', axis=0)
     CV_corr = CV_df.corr(method='spearman')
